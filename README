@@ -1,0 +1,134 @@
+##############################################################################################
+# Copyright 2018 The Johns Hopkins University Applied Physics Laboratory LLC
+# All rights reserved.
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this 
+# software and associated documentation files (the "Software"), to deal in the Software 
+# without restriction, including without limitation the rights to use, copy, modify, 
+# merge, publish, distribute, sublicense, and/or sell copies of the Software, and to 
+# permit persons to whom the Software is furnished to do so.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR 
+# PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE 
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, 
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE 
+# OR OTHER DEALINGS IN THE SOFTWARE.
+#
+# HAVE A NICE DAY.
+
+#################################################################################
+####  Local Function Affinity - Detecting Object File Boundaries in IDA Pro  ####
+#################################################################################
+
+**** Terminology ****
+
+I tend to use the term "module" for a set of related functions within a binary
+that came from a single object file.  So you will see the terms "module" and
+"object file" used interchangeabley in the LFA source and documentation.
+
+**** Dependencies ****
+
+The only dependency is Natural Language Toolkit (NLTK) - which you can get
+from https://www.nltk.org. 
+
+**** Source Files ****
+
+lfa.py -                 Main program - written to run as a script from IDA
+                         Pro.  By default, will analyze either the .text
+                         section or the full database, and output the files
+                         listed in the "Output Files" section. *** Make sure to
+                         set IDA_VERSION before you start! ***
+
+basicutils<_6x,_7x>.py - provides a version-agnostic API to IDA.  You need to
+                         set a definition in lfa.py to select which version
+                         of IDA you have.
+
+map_read.py -            For research purposes - compares a ground truth .map
+                         file (from ld) to a .map file from LFA and produces
+                         a score.  See RECON slides or the code itself for more
+                         info.  You need to add the option -Map=<target>.map to
+                         the linker options in a Makefile to get a .map file.
+
+                   The syntax to map_read is:
+                         python map_read.py <ground truth file> <LFA map file>
+
+**** LFA Parameters, Interpolation, and Output ****
+
+A couple areas for research:
+
+  - The idea behind LFA is that we throw out "external" calls - we can't 
+    determine this exactly in a binary so we throw out calls that are above a 
+    certain threshold.  This is set to 4K in the code but it could be tweaked.
+
+  - There is a threshold set for edge detection - plus a little bit of extra
+    logic (value has to be positive and 2 of last 3 values were negative). You
+    can either vary this threshold or write your own edge_detect() function.
+
+  - Currently "calls to" affinity and "calls from" affinity are treated as
+    separate scores.  If one of these scores is zero an interpolation from
+    the previous score is used - just a simple linear equation assuming
+    decreasing scores.  This could be improved a number of ways but could
+    be replaced with an actual interpolation between scores.
+
+  - If both "calls to" affinity and "calls from" affinity for a function are 0
+    the function is skipped and is essentially treated like it's not there.
+    This happens for functions with no references or where all references are
+    above the "external" threshold.  This means there can be gaps between the
+    modules in the output list.
+
+  - The portion of code that tries to name object files based on common strings
+    is completely researchy and open ended.  Lots of things to play with there.
+
+**** Output Files ****
+
+LFA produces 4 files:
+
+<target>_lfa_results.csv - Raw score output from LFA, including where edges 
+                           are detected.  Graphs can fairly easily be 
+                           generated in your favorite spreadsheet program.
+
+<target>_lfa_labels.py - Script that can be used to label your DB with LFA's 
+			 output.  After determining module boundaries, LFA
+                         attempts to guess the name (fun!) by looking at
+                         common strings used by the module.  Y can use this
+                         script as a scratchpad to name unnamed modules as you
+                         determine what they are, or you can also use other
+			 functions in basicutils to change module names later.
+
+<target>_lfa_map.map - A .map file similar to the output from the ld.  This is
+                       for the purposes of comparing to a ground truth .map
+                       file to test LFA when you have source code.
+
+<target>_lfa_mod_graph.gv - a Graphviz graph file of the module relationships
+                            This is a directed graph where a -> b indicates
+                            that a function in module a calls a function in
+                            module b.  This may take a long time to render if
+                            you have a large binary (more than a couple
+                            hundred modules detected).  For smaller binaries
+                            this can pretty clearly communicate the software
+                            architecture immediately.  For larger binaries
+                            this will show you graphically the most heavily
+                            used modules in the binary.
+
+You can use sfdp to render the graph into a PNG file with a command line like:
+
+sfdp -x -Goverlap=scale -Tpng -Goutputorder=edgesfirst -Nstyle=filled -Nfillcolor=white <target>_lfa_mod_graph.gv > <target>.png
+
+**** "Canonical" Names ****
+NOTE on IDA and Canonical Names:
+AFAICT IDA doesn't really have a concept of source file / object files in
+the database (it does with source-level debugging but that's it I think).
+In my ideal world, I'd write a nice GUI plugin to manage the object file
+names and regions, and then you'd be able to select how to display object/
+function names in the disassembly.  For now though I have to save both the
+object name and function name in the filename.
+
+For now, my hacky workaround is to name modules and functions in camel case
+(e.g. ReadNetworkString, or HtmlParsingEngine), and then combine them together
+in a nasty snake case "canonical" format, that looks like:
+
+<ObjectName>_<FunctionName>_<Address>
+
+That way I can parse out function and object names to be able to rename
+objects.  I am open to suggestions on better ways to do this.
+			
