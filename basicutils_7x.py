@@ -35,7 +35,7 @@ BADADDR = ida_idaapi.BADADDR
 
 def SegByName(n):
 	t = ida_segment.get_segm_by_name(n)
-	if (t.start_ea != ida_idaapi.BADADDR):
+	if (t and t.start_ea != ida_idaapi.BADADDR):
 		start = t.start_ea
 		end = t.end_ea
 	else:
@@ -141,7 +141,7 @@ def MemCopy( dest, src, length ) :
 def PrefixRange(start, end, prefix) :
     x = start
     while x < end:
-        n = ida_funcs.get_func_name(x)
+        n = idc.get_func_name(x)
         if n.startswith("sub_"):
             nn = prefix + n
             print "Renaming %s to %s\n" % (n, nn)
@@ -195,7 +195,7 @@ def isPlausibleFunction(s):
     return False
 
 def PrependStrToFuncName(f,s):
-    n = ida_funcs.get_func_name(f)
+    n = idc.get_func_name(f)
     n = s + n
     ida_name.set_name(f,n)
 
@@ -205,7 +205,7 @@ def PrependStrToFuncName(f,s):
 
 #Return just the "function name" part of the canonical name	
 def GetCanonicalName(f):
-    n = ida_funcs.get_func_name(f)
+    n = idc.get_func_name(f)
     parts = n.split("_")
     if len(parts) == 3:
         return parts[1]
@@ -215,7 +215,7 @@ def GetCanonicalName(f):
 #Put function in canonical format, given the function name and module name        
 def NameCanonical(f,mod_name,func_name):
     n = "%s_%s_%08x" % (mod_name,func_name,f)
-    print "Renaming %s to %s\n" % (ida_funcs.get_func_name(f),n)
+    print "Renaming %s to %s\n" % (idc.get_func_name(f),n)
     ida_name.set_name(f,n)
 
 #Put function in canonical format when it doesn't have a name, but you know the module name    
@@ -227,7 +227,7 @@ def RenameFuncWithAddr(f,s):
 def RenameRangeWithAddr(start,end,s):
     x = start
     while (x<=end):
-        n = ida_funcs.get_func_name(x)
+        n = idc.get_func_name(x)
         if (n.startswith("sub_")):
             RenameFuncWithAddr(x,s)
         else:
@@ -236,7 +236,7 @@ def RenameRangeWithAddr(start,end,s):
 		
 #Rename a function in canonical format without changing the module name
 def CanonicalFuncRename(f,name):
-    n = ida_funcs.get_func_name(f)
+    n = idc.get_func_name(f)
     parts = n.split("_")
     new_name = "%s_%s_%08x" % (parts[0],name,f)
     print "Renaming %s to %s\n" % (n, new_name)
@@ -244,7 +244,7 @@ def CanonicalFuncRename(f,name):
 
 #Rename the module name without changing the function name		
 def RenameFuncWithNewMod(f,mod):
-    n = ida_funcs.get_func_name(f)
+    n = idc.get_func_name(f)
     parts = n.split("_")
     new_name = "%s_%s_%08x" % (mod,parts[1],f)
     print "Renaming %s to %s\n" % (n, new_name)
@@ -252,9 +252,9 @@ def RenameFuncWithNewMod(f,mod):
 
 #Rename a module (all functions that start with <mod>_)	
 def RenameMod(orig, new):
-    i = ida_funcs.get_next_func(0)
-    while (i != ida_idaapi.BADADDR):
-        n = ida_funcs.get_func_name(i)
+    i = idc.get_next_func(0)
+    while (i != BADADDR):
+        n = idc.get_func_name(i)
         if n.startswith(orig+"_"):
             RenameFuncWithNewMod(i,new)
         i = NextFunction(i)
@@ -263,7 +263,7 @@ def RenameMod(orig, new):
 def RenameModRange(start, end, new):
     x = start
     while (x<=end):
-        n = ida_funcs.get_func_name(x)
+        n = idc.get_func_name(x)
         RenameFuncWithNewMod(x,new)
         x = NextFunction(x)
 		
@@ -272,7 +272,7 @@ def RenameModRange(start, end, new):
 def CanonicalizeRange(start,end,mod):
     x = start
     while (x<=end):
-        n = ida_funcs.get_func_name(x)
+        n = idc.get_func_name(x)
         #if it already starts with mod name, assume it's canonical
         if (not n.startswith(mod+"_")):
             if (n.startswith("sub_")):
@@ -321,7 +321,7 @@ def CompileFuncNamesFromRangeAsText(start,end,sep):
     x = start
     s = ""
     while (x<=end):
-        n = ida_funcs.get_func_name(x)
+        n = idc.get_func_name(x)
         if (not n.startswith("sub_")):
             s += " " + sep + " " + n
         x = NextFunction(x)
