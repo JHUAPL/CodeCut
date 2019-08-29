@@ -58,12 +58,7 @@ def PrevFunction(x):
 MAX_OPCODE_LEN = 15	
 def PrevInstr(ea):
     # TODO this will return an inst_t type. Need to figure out how to populate it/make workflow happy
-	out=ida_ua.insn_t()
-	ida_ua.decode_prev_insn(out, ea)
-	return out.ea
-	
-def CodeRefsTo(target):
-    return idautils.CodeRefsTo(target,0)
+    return ida_ua.decode_prev_insn(ea, ea-MAX_OPCODE_LEN)
 
 def ForEveryUniqXrefTo( target, fun ):
     a = 0
@@ -94,18 +89,6 @@ def ForEveryFuncInDb( fun ):
         fun(f)
         f=NextFunction(f)
 
-def ForEveryFuncInSeg( seg, fun ):
-    start,end = SegByName(".text")
-    if (start == BADADDR):
-        start = NextFunction(0)
-        end = BADADDR
-    f = start
-    while (f < end):
-        """print "ev: %#x" % f"""
-        fun(f)
-        f=NextFunction(f)		
-		
-		
 def NFuncUp( fun, n ) :
     i=0
     f=fun
@@ -265,7 +248,7 @@ def RenameFuncWithNewMod(f,mod):
     parts = n.split("_")
     new_name = "%s_%s_%08x" % (mod,parts[1],f)
     print "Renaming %s to %s\n" % (n, new_name)
-    ida_name.set_name(f,new_name)
+    ida_name.set_name(f,new_name)	# TODO confirm this works...
 
 #Rename a module (all functions that start with <mod>_)	
 def RenameMod(orig, new):

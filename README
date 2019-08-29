@@ -1,5 +1,5 @@
 ##############################################################################################
-# Copyright 2019 The Johns Hopkins University Applied Physics Laboratory LLC
+# Copyright 2018 The Johns Hopkins University Applied Physics Laboratory LLC
 # All rights reserved.
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this 
 # software and associated documentation files (the "Software"), to deal in the Software 
@@ -16,50 +16,43 @@
 #
 # HAVE A NICE DAY.
 
-#################################################################
-####  CodeCut - Detecting Object File Boundaries in IDA Pro  ####
-#################################################################
+#################################################################################
+####  Local Function Affinity - Detecting Object File Boundaries in IDA Pro  ####
+#################################################################################
 
 **** Terminology ****
 
 I tend to use the term "module" for a set of related functions within a binary
 that came from a single object file.  So you will see the terms "module" and
-"object file" used interchangeabley in the CC source and documentation.
+"object file" used interchangeabley in the LFA source and documentation.
 
 **** Dependencies ****
 
-CodeCut relies on:
-Natural Language Toolkit (NLTK) - https://www.nltk.org
-Snap.py - https://snap.stanford.edu/snappy/ 
+The only dependency is Natural Language Toolkit (NLTK) - which you can get
+from https://www.nltk.org. 
 
 **** Source Files ****
 
-cc_main.py -             Main entry point - simply load this up with the 
-                         "File -> Script file..." option in IDA. 
+lfa.py -                 Main program - written to run as a script from IDA
+                         Pro.  By default, will analyze either the .text
+                         section or the full database, and output the files
+                         listed in the "Output Files" section. *** Make sure to
+                         set IDA_VERSION before you start! ***
 
-lfa.py -                 Analysis engine for LFA.
-
-mc.py -		         Analysis engine for MaxCut.
-
-basicutils_7x.py -       Provides an API to IDA - maybe one day we'll get this
-                         ported to Ghidra!
+basicutils<_6x,_7x>.py - provides a version-agnostic API to IDA.  You need to
+                         set a definition in lfa.py to select which version
+                         of IDA you have.
 
 map_read.py -            For research purposes - compares a ground truth .map
-                         file (from ld) to a .map file from CC and produces
+                         file (from ld) to a .map file from LFA and produces
                          a score.  See RECON slides or the code itself for more
                          info.  You need to add the option -Map=<target>.map to
                          the linker options in a Makefile to get a .map file.
 
                    The syntax to map_read is:
-                         python map_read.py <ground truth file> <CC map file>
+                         python map_read.py <ground truth file> <LFA map file>
 
-**** MaxCut Parameters ****
-
-  - Right now there is only one parameter for MaxCut, a value for the maximum
-    module size (currently set to 16K).  
-
-
-**** LFA Parameters & Interpolation ****
+**** LFA Parameters, Interpolation, and Output ****
 
 A couple areas for research:
 
@@ -88,35 +81,34 @@ A couple areas for research:
 
 **** Output Files ****
 
-CodeCut produces 7 files:
+LFA produces 4 files:
 
-<target>_cc_results.csv - Raw score output from LFA and MaxCut, including where 
-                          edges are detected.  Graphs can fairly easily be 
-                          generated in your favorite spreadsheet program.
+<target>_lfa_results.csv - Raw score output from LFA, including where edges 
+                           are detected.  Graphs can fairly easily be 
+                           generated in your favorite spreadsheet program.
 
-<target>_{lfa,mc}_labels.py - Script that can be used to label your DB with CC's 
-			      output.  After determining module boundaries, CC 
-                              attempts to guess the name (fun!) by looking at
-                              common strings used by the module, for both the 
-                              LFA and MaxCut module lists.  You can use this
-                              script as a scratchpad to name unnamed modules as you
-                              determine what they are, or you can also use other
-			      functions in basicutils to change module names later.
+<target>_lfa_labels.py - Script that can be used to label your DB with LFA's 
+			 output.  After determining module boundaries, LFA
+                         attempts to guess the name (fun!) by looking at
+                         common strings used by the module.  Y can use this
+                         script as a scratchpad to name unnamed modules as you
+                         determine what they are, or you can also use other
+			 functions in basicutils to change module names later.
 
-<target>_{lfa,mc}_map.map - A .map file similar to the output from the ld.  This is
-                            for the purposes of comparing to a ground truth .map
-                            file to test CC when you have source code.
+<target>_lfa_map.map - A .map file similar to the output from the ld.  This is
+                       for the purposes of comparing to a ground truth .map
+                       file to test LFA when you have source code.
 
-<target>_{lfa,mc}_mod_graph.gv - a Graphviz graph file of the module relationships
-                                 This is a directed graph where a -> b indicates
-                                 that a function in module a calls a function in
-                                 module b.  This may take a long time to render if
-                                 you have a large binary (more than a couple
-                                 hundred modules detected).  For smaller binaries
-                                 this can pretty clearly communicate the software
-                                 architecture immediately.  For larger binaries
-                                 this will show you graphically the most heavily
-                                 used modules in the binary.
+<target>_lfa_mod_graph.gv - a Graphviz graph file of the module relationships
+                            This is a directed graph where a -> b indicates
+                            that a function in module a calls a function in
+                            module b.  This may take a long time to render if
+                            you have a large binary (more than a couple
+                            hundred modules detected).  For smaller binaries
+                            this can pretty clearly communicate the software
+                            architecture immediately.  For larger binaries
+                            this will show you graphically the most heavily
+                            used modules in the binary.
 
 You can use sfdp to render the graph into a PNG file with a command line like:
 
