@@ -22,6 +22,7 @@
 import idc
 import struct
 import idautils
+import idaapi
 import re
 
 BADADDR = idc.BADADDR
@@ -202,7 +203,7 @@ def GetCanonicalName(f):
 def NameCanonical(f,mod_name,func_name):
 	n = "%s_%s_%08x" % (mod_name,func_name,f)
 	print "Renaming %s to %s\n" % (idc.GetFunctionName(f),n)
-	idc.MakeName(f,n)
+	idaapi.do_name_anyway(f,n)
 
 #Put function in canonical format when it doesn't have a name, but you know the module name
 def RenameFuncWithAddr(f,s):

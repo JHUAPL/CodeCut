@@ -17,6 +17,14 @@
 # HAVE A NICE DAY.
 
 import basicutils_7x as basicutils
+import json
+
+## Utilities
+
+#escape_for_graphviz()
+#Return the string escaped for usage in a GraphViz file
+def escape_for_graphviz(string):
+    return json.dumps(string)
 
 ## CodeCut Basics
 ## A couple of functions for working with function and module lists and outputting results
@@ -69,7 +77,7 @@ def gen_mod_graph(module_list, suffix):
 	file.write("digraph g {\n")
 	
 	for (node1,node2) in g:
-		line = "%s -> %s\n" % (node1,node2)
+		line = "%s -> %s\n" % (escape_for_graphviz(node1),escape_for_graphviz(node2))
 		file.write(line)
 		
 	file.write("}\n")
@@ -94,7 +102,7 @@ def gen_rename_script(module_list, suffix):
 	
 	while (c<len(module_list)):
 		m=module_list[c]
-		file.write("\tbasicutils.RenameRangeWithAddr(0x%x,0x%x,\"%s\")\n"%(m.start,m.end,m.name))
+		file.write("\tbasicutils.RenameRangeWithAddr(0x%x,0x%x,%r)\n"%(m.start,m.end,m.name))
 		c+=1
 		
 	file.write("\n")
