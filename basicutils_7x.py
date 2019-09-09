@@ -18,6 +18,7 @@
 
 # basicutils - a version-agnostic API for IDA Pro with some (slightly) higher level functionality
 # This is the 7.x version - see basicutils_6x for the 7.x version
+import os
 
 import ida_bytes
 import ida_funcs
@@ -48,6 +49,12 @@ def GetFunctionName(x):
 
 def GetInputFile():
 	return idc.get_root_filename()
+
+def GetIdbFile():
+    return idc.get_idb_path()
+
+def GetRootName():
+    return os.path.join(os.path.dirname(GetIdbFile()), os.path.basename(GetInputFile()))
 
 def NextFunction(x):
 	return idc.get_next_func(x)

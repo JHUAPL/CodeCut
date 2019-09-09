@@ -18,6 +18,7 @@
 
 import basicutils_7x as basicutils
 import json
+import os
 
 ## Utilities
 
@@ -71,7 +72,7 @@ def gen_mod_graph(module_list, suffix):
 			f = basicutils.NextFunction(f)
 		c+=1
 
-	root_name = basicutils.GetInputFile()
+	root_name = basicutils.GetRootName()
 	file = open(root_name + "_" + suffix + "_mod_graph.gv", "wb")
 	
 	file.write("digraph g {\n")
@@ -91,7 +92,7 @@ def gen_mod_graph(module_list, suffix):
 def gen_rename_script(module_list, suffix):
 	c=0
 
-	root_name = basicutils.GetInputFile()
+	root_name = basicutils.GetRootName()
 	file = open(root_name + "_" + suffix + "_labels.py", "wb")
 	
 	#if (IDA_VERSION < 7):
@@ -117,7 +118,7 @@ def gen_rename_script(module_list, suffix):
 def gen_map_file(module_list, suffix):
 	c=0
 
-	root_name = basicutils.GetInputFile()
+	root_name = basicutils.GetRootName()
 	file = open(root_name + "_" + suffix + "_map.map", "wb")
 	
 	while (c<len(module_list)):
@@ -133,7 +134,7 @@ def gen_map_file(module_list, suffix):
 #Write all of the results to <target>.csv - which can be opened in your favorite spreadsheet program		
 def print_results(function_list, module_list1, module_list2):
 	c=0
-	root_name = basicutils.GetInputFile()
+	root_name = basicutils.GetRootName()
 	file = open(root_name + "_cc_results.csv", "wb")
 	
 	#write header
