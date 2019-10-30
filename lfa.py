@@ -210,7 +210,7 @@ def get_last_three(index):
 	i = index-1
 	p=[]
 	while ((c<3) and (i>0)):
-		print "get_last_3: %d,%d" % (c,i)
+		#print "get_last_3: %d,%d" % (c,i)
 		if (g_function_list[i].lfa_skip == 0):
 			p.append(g_function_list[i])
 			c+=1
@@ -225,7 +225,7 @@ def get_lfa_start():
 	c=0;
 	i=0;
 	while (c < 4):
-		print "get_lfa_start: %d,%d" % (c,i)
+		#print "get_lfa_start: %d,%d" % (c,i)
 		if (g_function_list[i].lfa_skip==0):
 			c+=1
 		i+=1
@@ -245,16 +245,11 @@ def edge_detect():
 	c=get_lfa_start()
 	#do edge detection
 	while (c<len(g_function_list)):
-		#TODO: this is not working as previously intended
-		#because the last 3 can have "skipped" entries in them
 		if (g_function_list[c].lfa_skip == 0):
 			f_1,f_2,f_3 = get_last_three(c)
 			p_1 = f_1.total_score
 			p_2 = f_2.total_score
 			p_3 = f_3.total_score
-			#p_1 = g_function_list[c-1].total_score
-			#p_2 = g_function_list[c-2].total_score
-			#p_3 = g_function_list[c-3].total_score
 			s = g_function_list[c].total_score
 			#if score is positive and it is diff of at least 2 from previous
 			#and the previous function was not an edge
@@ -270,8 +265,8 @@ def edge_detect():
 	while(c<len(g_function_list)):
 		f = g_function_list[c]
 		if (f.edge[0] == 1):
-			p = g_function_list[c-1]
-			b_mod = module.bin_module(mod_start,p.loc,0,"")
+			#change from previous code, this will make the modules contiguous
+			b_mod = module.bin_module(mod_start,f.loc-1,0,"")
 			mod_start = f.loc #set the start of the next module to this function (where edge was detected)
 			g_module_list.append(b_mod)
 		c+=1

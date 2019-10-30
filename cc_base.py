@@ -19,6 +19,7 @@
 import basicutils_7x as basicutils
 import json
 import os
+import modnaming
 
 ## Utilities
 
@@ -123,7 +124,8 @@ def gen_map_file(module_list, suffix):
 	
 	while (c<len(module_list)):
 		m=module_list[c]
-		mlen = basicutils.NextFunction(m.end) - m.start 
+		#mlen = basicutils.NextFunction(m.end) - m.start 
+		mlen = m.end - m.start
 		mlen_str = "0x%x" % mlen
 		file.write("%s0x%016x%s %s\n" % (" .text".ljust(16),m.start,mlen_str.rjust(11),m.name))
 		c+=1
@@ -138,7 +140,7 @@ def print_results(function_list, module_list1, module_list2):
 	file = open(root_name + "_cc_results.csv", "wb")
 	
 	#write header
-	file.write("Function,Function #,LFA Score 1,LFA Score 2,LFA Total,LFA Edge,MC Edge,Function Name,Suggested Mod Name (LFA), Suggested Mod Name(MC)\n");
+	file.write("Function,Function #,LFA Score 1,LFA Score 2,LFA Total,LFA Edge,MC Edge,Function Name,Suggested Mod Name (LFA), Suggested Mod Name(MC),Source Str Ref\n");
 	
 	while (c<len(function_list)):
 		f = function_list[c]
@@ -147,6 +149,13 @@ def print_results(function_list, module_list1, module_list2):
 		m2 = locate_module(module_list2, f.loc)
 		mname1 = m1.name
 		mname2 = m2.name
-		line = "0x%08x, %d , %f, %f, %f, %d, %d, %s, %s, %s\n" % (f.loc,c+1,f.score1, f.score2, f.total_score,f.edge[0],f.edge[1],fname, mname1, mname2)
+		#hacky - should actually find the extent of the function
+		#for now we'll just skip the last one
+		if (c < (len(function_list) - 1)):
+			nf = basicutils.NextFunction(f.loc)
+			func_str_ref, score = modnaming.source_file_strings(f.loc, nf-1)
+		else:
+			func_str_ref=""
+		line = "0x%08x, %d , %f, %f, %f, %d, %d, %s, %s, %s, %s\n" % (f.loc,c+1,f.score1, f.score2, f.total_score,f.edge[0],f.edge[1],fname, mname1, mname2, func_str_ref)
 		file.write(line)
 		c+=1
