@@ -18,6 +18,7 @@
 
 # basicutils - a version-agnostic API for IDA Pro with some (slightly) higher level functionality
 # This is the 7.x version - see basicutils_6x for the 7.x version
+import os
 
 import ida_bytes
 import ida_funcs
@@ -49,6 +50,12 @@ def GetFunctionName(x):
 def GetInputFile():
 	return idc.get_root_filename()
 
+def GetIdbFile():
+    return idc.get_idb_path()
+
+def GetRootName():
+    return os.path.join(os.path.dirname(GetIdbFile()), os.path.basename(GetInputFile()))
+
 def NextFunction(x):
 	return idc.get_next_func(x)
 
@@ -58,7 +65,12 @@ def PrevFunction(x):
 MAX_OPCODE_LEN = 15	
 def PrevInstr(ea):
     # TODO this will return an inst_t type. Need to figure out how to populate it/make workflow happy
-    return ida_ua.decode_prev_insn(ea, ea-MAX_OPCODE_LEN)
+	out=ida_ua.insn_t()
+	ida_ua.decode_prev_insn(out, ea)
+	return out.ea
+	
+def CodeRefsTo(target):
+    return idautils.CodeRefsTo(target,0)
 
 def ForEveryUniqXrefTo( target, fun ):
     a = 0
@@ -89,6 +101,19 @@ def ForEveryFuncInDb( fun ):
         fun(f)
         f=NextFunction(f)
 
+def ForEveryFuncInSeg( seg, fun ):
+    start,end = SegByName(".text")
+    if (start == BADADDR):
+        start = NextFunction(0)
+        end = BADADDR
+    f = start
+    while (f < end):
+        """print "ev: %#x" % f"""
+        print f
+        fun(f)
+        f=NextFunction(f)		
+		
+		
 def NFuncUp( fun, n ) :
     i=0
     f=fun
@@ -216,7 +241,7 @@ def GetCanonicalName(f):
 def NameCanonical(f,mod_name,func_name):
     n = "%s_%s_%08x" % (mod_name,func_name,f)
     print "Renaming %s to %s\n" % (idc.get_func_name(f),n)
-    ida_name.set_name(f,n)
+    ida_name.force_name(f,n)
 
 #Put function in canonical format when it doesn't have a name, but you know the module name    
 def RenameFuncWithAddr(f,s):
@@ -248,7 +273,7 @@ def RenameFuncWithNewMod(f,mod):
     parts = n.split("_")
     new_name = "%s_%s_%08x" % (mod,parts[1],f)
     print "Renaming %s to %s\n" % (n, new_name)
-    ida_name.set_name(f,new_name)	# TODO confirm this works...
+    ida_name.set_name(f,new_name)
 
 #Rename a module (all functions that start with <mod>_)	
 def RenameMod(orig, new):
