@@ -119,10 +119,8 @@ def make_cut(region_start, region_end, graph):
 def do_cutting(start, end, graph):
 	nodes = graph.GetNodes()
 	print "do_cutting: start: 0x%x end: 0x%x nodes: 0x%x" % (start, end, nodes)
-	#set this way for simple
-	#THRESHOLD = 0x100
-	#THRESHOLD = 0x1000
-	THRESHOLD = 0x4000
+	THRESHOLD = 0x1000
+	#THRESHOLD = 0x2000
 	
 	if (end - start > THRESHOLD) and (nodes > 1):
 		cut_address = make_cut(start, end,graph)

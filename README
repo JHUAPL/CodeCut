@@ -86,6 +86,10 @@ A couple areas for research:
   - The portion of code that tries to name object files based on common strings
     is completely researchy and open ended.  Lots of things to play with there.
 
+**** MaxCut Parameters & Interpolation ****
+
+  - The only real parameter for MaxCut is a THRESHOLD variable that corresponds to the size at which the algorithm will stop subdividing modules.  A threshold of 4K (0x1000) seems to provide similar sized modules to LFA.  A threshold of 8K (0x2000) seems to be a good upper bound.  A good area of research would be making this not a static cutoff but maybe deciding to stop subdividing based on a connectedness measurement or something along those lines.
+
 **** Output Files ****
 
 CodeCut produces 7 files:
@@ -121,6 +125,13 @@ CodeCut produces 7 files:
 You can use sfdp to render the graph into a PNG file with a command line like:
 
 sfdp -x -Goverlap=scale -Tpng -Goutputorder=edgesfirst -Nstyle=filled -Nfillcolor=white <target>_lfa_mod_graph.gv > <target>.png
+
+A really nice hierarchical graph can be obtained by adding:
+ranksep=0
+nodesep=0
+to the .gv file and running:
+
+dot -x -Goverlap=scale -Tpng -Goutputorder=edgesfirst -Nstyle=filled -Nfillcolor=white <target>.gv > <target>.png
 
 **** "Canonical" Names ****
 NOTE on IDA and Canonical Names:
