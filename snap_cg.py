@@ -37,13 +37,13 @@ def add_edge(f, t):
 	n = basicutils.GetFunctionName(f)
 	if n != "":
 		#since we're only doing one edge for each xref, we'll do weight based on distance from the middle of the caller to the callee
-		f_start = idc.GetFunctionAttr(f,idc.FUNCATTR_START)
+		f_start = idc.get_func_attr(f, idc.FUNCATTR_START)
 		
 		if (not UGraph.IsNode(f_start)):
-			print "Error: had to add node (to): %08x" % f_start
+			print("Error: had to add node (to): %08x" % f_start)
 			UGraph.AddNode(f_start)
 		
-		print "%08x -> %08x" % (f_start, t)
+		print("%08x -> %08x" % (f_start, t))
 		UGraph.AddEdge(t,f_start)
 		
 		#print "s_%#x -> s_%#x" % (f_start,t)," [len = ",get_weight(func_mid, t), "]"
@@ -61,7 +61,7 @@ def create_snap_cg():
 	basicutils.ForEveryFuncInSeg(".text",add_node)
 	
 	for NI in UGraph.Nodes():
-		print "node id 0x%x with out-degree %d and in-degree %d" %(
-			NI.GetId(), NI.GetOutDeg(), NI.GetInDeg())
+		print("node id 0x%x with out-degree %d and in-degree %d" %(
+			NI.GetId(), NI.GetOutDeg(), NI.GetInDeg()))
 	
 	return UGraph

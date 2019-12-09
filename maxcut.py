@@ -33,7 +33,7 @@ g_maxcut_modlist = []
 #or terminate outside the region)
 
 def make_subgraph(region_start,region_end, graph):
-	print "make_subgraph: start: 0x%x and end: 0x%x" % (region_start,region_end)
+	print("make_subgraph: start: 0x%x and end: 0x%x" % (region_start,region_end))
 	NIdV = snap.TIntV()
 	#this would be much faster if we had a linear list of functions (nodes)
 	for Node in graph.Nodes():
@@ -51,7 +51,7 @@ def make_subgraph(region_start,region_end, graph):
 #closest to the middle of the region is returned.  	
 def make_cut(region_start, region_end, graph):
 
-	print "make_cut: start: 0x%x end: 0x%x" % (region_start,region_end)
+	print("make_cut: start: 0x%x end: 0x%x" % (region_start,region_end))
 
 	weight = {}
 	z = 0
@@ -79,7 +79,7 @@ def make_cut(region_start, region_end, graph):
 		#If we have a place where we have no edges crossing - keep track of it
 		#We will pick the place closest to the center of the module
 		if edge_count == 0:
-			print "  returning 0 weight count at: 0x%0x" % cut_address
+			print("  returning 0 weight count at: 0x%0x" % cut_address)
 			z+=1
 			zeroes.append(cut_address)
 			weight[cut_address] = 0
@@ -89,27 +89,27 @@ def make_cut(region_start, region_end, graph):
 
 	#if we had edges with zero crossings, pick the one closest to the center	
 	if (z > 0):
-		print "  total of %d zero weight counts" % (z)
+		print("  total of %d zero weight counts" % (z))
 		center = region_start + ((region_end-region_start)/2)
-		min_dist = sys.maxint
-		for i in xrange(z):
+		min_dist = sys.maxsize
+		for i in range(z):
 			dist = abs(center - zeroes[i])
 			if dist < min_dist:
 				min_dist = dist
 				min_zero = zeroes[i]
-		print "  returning zero cut at addr: %x" % min_zero
+		print("  returning zero cut at addr: %x" % min_zero)
 		return min_zero
 		
 	#otherwise pick the edge with the maximum weight score
 	max_weight=0
 	#print "   weight table:"
-	for addr,w in weight.iteritems():
+	for addr,w in weight.items():
 		#print "      %x: %x" % (addr,w)
 		if w > max_weight:
 			max_addr = addr
 			max_weight = w
 
-	print "   returning max weight: %x at addr: 0x%x" % (max_weight,max_addr)
+	print("   returning max weight: %f at addr: 0x%x" % (max_weight,max_addr))
 	return max_addr
 
 #do_cutting()
@@ -118,7 +118,7 @@ def make_cut(region_start, region_end, graph):
 #Stop if the area being cut is below a particular threshold	
 def do_cutting(start, end, graph):
 	nodes = graph.GetNodes()
-	print "do_cutting: start: 0x%x end: 0x%x nodes: 0x%x" % (start, end, nodes)
+	print("do_cutting: start: 0x%x end: 0x%x nodes: 0x%x" % (start, end, nodes))
 	THRESHOLD = 0x1000
 	#THRESHOLD = 0x2000
 	
@@ -131,7 +131,7 @@ def do_cutting(start, end, graph):
 		do_cutting(start,cut_address,graph1)
 		do_cutting(cut_address+1,end,graph2)
 	else:
-		print "Module 0x%x to 0x%x" % (start, end)
+		print("Module 0x%x to 0x%x" % (start, end))
 		b_mod = module.bin_module(start,end,0,"")
 		g_maxcut_modlist.append(b_mod)
 
@@ -147,7 +147,7 @@ def func_list_annotate(flist):
 			#print "F: %08x M: %08x" % (flist[c].loc, start)
 			c+=1
 			if (c == len(flist)):
-				print "Error: Maxcut module list does not reconcile with function list"
+				print("Error: Maxcut module list does not reconcile with function list")
 				return None
 		flist[c].edge[1]=1
 		#print "MC: Set %08x func edge to 1" % flist[c].loc
@@ -161,7 +161,7 @@ def analyze(flist):
 	sys.setrecursionlimit(5000)
 	UGraph = snap_cg.create_snap_cg()
 
-	g_min_node=sys.maxint
+	g_min_node=sys.maxsize
 	g_max_node=0
 
 	for Node in UGraph.Nodes():

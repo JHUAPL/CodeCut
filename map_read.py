@@ -109,14 +109,14 @@ def map_parse(f,mlist):
 #Print both ground truth and LFA map output
 def map_print(n):
 	if (n==1):
-		print "Map 1 (ground truth):"
+		print("Map 1 (ground truth):")
 		mod_list = g_mod_list1
 	else:
-		print "Map 2:"
+		print("Map 2:")
 		mod_list = g_mod_list2
-	print "# of modules: %d" % len(mod_list)
-	for x in xrange(len(mod_list)):
-		print "Name: %s Offset: %x Len: %x" % (mod_list[x].name,mod_list[x].offset,mod_list[x].mlen)
+	print("# of modules: %d" % len(mod_list))
+	for x in range(len(mod_list)):
+		print("Name: %s Offset: %x Len: %x" % (mod_list[x].name,mod_list[x].offset,mod_list[x].mlen))
 
 
 #score_underlap(module1,module2):
@@ -164,9 +164,9 @@ def mod_collapse(m1,m2):
 #Print a single module	
 def mod_print(m):
 	#print "%s: %08x - %08x" % (m.name,m.offset,m.reach),
-	print "%08x - %08x" % (m.offset,m.reach),
+	print("%08x - %08x" % (m.offset,m.reach), end=' ')
 	if (m.gap != 0):
-		print " gap: %x" % m.gap,
+		print(" gap: %x" % m.gap, end=' ')
 
 #rec_list_print():
 #Print side by side the reconciled module lists		
@@ -174,12 +174,12 @@ def rec_list_print():
 	i1 = len(g_rec_list1)
 	i2 = len(g_rec_list2)
 	if (i1 != i2):
-		print "Error: List lengths don't match, not fully reconciled (%d and %d)." % (i1,i2)
+		print("Error: List lengths don't match, not fully reconciled (%d and %d)." % (i1,i2))
 		return
-	for i in xrange(i1):
+	for i in range(i1):
 		mod_print(g_rec_list1[i])
 		mod_print(g_rec_list2[i])
-		print "u: %x" % (score_underlap(g_rec_list1[i],g_rec_list2[i]))
+		print("u: %x" % (score_underlap(g_rec_list1[i],g_rec_list2[i])))
 
 #final_score():
 #Determine the scores by iterating through the reconciled module lists
@@ -190,17 +190,17 @@ def final_score():
 	i1 = len(g_rec_list1)
 	i2 = len(g_rec_list2)
 	if (i1 != i2):
-		print "Error: List lengths don't match, not fully reconciled (%d and %d)." % (i1,i2)
+		print("Error: List lengths don't match, not fully reconciled (%d and %d)." % (i1,i2))
 		return
 	s=0
 	g=0
-	for i in xrange(0,i1):
+	for i in range(0,i1):
 		s+=score_underlap(g_rec_list1[i],g_rec_list2[i])
 		#only count gaps from the "compare" map file (the one we generate with LFA)
 		g+=g_rec_list2[i].gap
 	#Area of overlap - total area - (underlaps + gaps)
 	good_area = (end-start) - (s+g)
-	print "Length: 0x%x Good: 0x%x (%2f) Underlap: 0x%x (%2f) Gaps: 0x%x (%2f)" % (end-start,good_area, good_area*100.0/(end-start),s,s*100.0/(end-start),g,g*100.0/(end-start))
+	print("Length: 0x%x Good: 0x%x (%2f) Underlap: 0x%x (%2f) Gaps: 0x%x (%2f)" % (end-start,good_area, good_area*100.0/(end-start),s,s*100.0/(end-start),g,g*100.0/(end-start)))
 	return (s+g)/1.0/(end-start)	
 			
 #map_reconcile():
@@ -229,11 +229,11 @@ def map_reconcile():
 		po = mod_underlap(m1,m2)
 		pc = 0x10000000000
 
-		print "  m1 (%d): " % i1,
+		print("  m1 (%d): " % i1, end=' ')
 		mod_print(m1)
-		print "  m2 (%d): " % i2,
+		print("  m2 (%d): " % i2, end=' ')
 		mod_print(m2)
-		print "  underlap: %x" % (po)
+		print("  underlap: %x" % (po))
 
 		d=0
 		#module 1 is longer than module 2, so attempt to collapse modules in list 2 to optimize
@@ -244,17 +244,17 @@ def map_reconcile():
 				pnm2 = nm2
 				nm2 = mod_collapse(nm2,g_mod_list2[i2+1])
 				pc = mod_underlap(m1, nm2)
-				print "nm2 (%d): (%x)" % (i2+1,pc),
+				print("nm2 (%d): (%x)" % (i2+1,pc), end=' ')
 				mod_print(nm2)	
-				print ""
+				print("")
 				if (pc < po):
 					po = pc
 					i2+=1
 				else:
 					d=1
-			print "Collapsed m2 (%d): " % i2,
+			print("Collapsed m2 (%d): " % i2, end=' ')
 			mod_print(pnm2)
-			print ""
+			print("")
 			
 			#add final collapsed modules to reconciled list
 			g_rec_list1.append(m1)
@@ -266,55 +266,55 @@ def map_reconcile():
 				pnm1 = nm1
 				nm1 = mod_collapse(nm1,g_mod_list1[i1+1])
 				pc = mod_underlap(nm1, m2)
-				print "nm1 (%d): (%x)" % (i1 + 1, pc),
+				print("nm1 (%d): (%x)" % (i1 + 1, pc), end=' ')
 				mod_print(nm1)
-				print ""
+				print("")
 				if (pc < po):
 					po = pc
 					i1 += 1
 				else:
 					d=1
-			print "Collapsed m1 (%d): " % i1,
+			print("Collapsed m1 (%d): " % i1, end=' ')
 			mod_print(pnm1)
-			print ""
+			print("")
 			g_rec_list1.append(pnm1)
 			g_rec_list2.append(m2)
 
 		i1+=1
 		i2+=1
 
-		print ""
+		print("")
 
 		#end case
 		#if we've got one module left on either side,
 		#collapse all the other modules on the other side to match
 		if (i1 == len(g_mod_list1)-1):
 			m1 = g_mod_list1[i1]
-			print "end m1 (%d):" % (i1),
+			print("end m1 (%d):" % (i1), end=' ')
 			mod_print(m1)
-			print ""
+			print("")
 			nm2 = g_mod_list2[i2]
 			i2 += 1
 			while (i2 < len(g_mod_list2)):
 				nm2 = mod_collapse(nm2,g_mod_list2[i2])
-				print "end nm2 (%d):" % (i2),
+				print("end nm2 (%d):" % (i2), end=' ')
 				mod_print(nm2)
-				print ""
+				print("")
 				i2 += 1
 			g_rec_list1.append(m1)
 			g_rec_list2.append(nm2)
 		if (i2 == len(g_mod_list2)-1):
 			m2 = g_mod_list2[i2]
-			print "end m2 (%d):" % (i2),
+			print("end m2 (%d):" % (i2), end=' ')
 			mod_print(m2)
-			print ""
+			print("")
 			nm1 = g_mod_list1[i1]
 			i1 += 1
 			while (i1 < len(g_mod_list1)):
 				nm1 = mod_collapse(nm1,g_mod_list1[i1])
-				print "end nm1 (%d):" % (i1),
+				print("end nm1 (%d):" % (i1), end=' ')
 				mod_print(nm1)
-				print ""
+				print("")
 				i1 += 1
 			g_rec_list1.append(nm1)
 			g_rec_list2.append(m2)
@@ -338,6 +338,6 @@ map_reconcile()
 rec_list_print()
 
 #Print score
-print "Score: %f" % (final_score())
+print("Score: %f" % (final_score()))
 f.close()
 f2.close()

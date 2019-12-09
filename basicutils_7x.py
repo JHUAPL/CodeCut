@@ -109,7 +109,7 @@ def ForEveryFuncInSeg( seg, fun ):
     f = start
     while (f < end):
         """print "ev: %#x" % f"""
-        print f
+        print(f)
         fun(f)
         f=NextFunction(f)		
 		
@@ -158,7 +158,7 @@ def ProgramAddrRange() :
     return ida_funcs.get_prev_func(ida_idaapi.BADADDR) - ida_funcs.get_next_func(0)
 
 def MemCopy( dest, src, length ) :
-    for i in xrange(0, length):
+    for i in range(0, length):
         #if (i < 20):
         #	print "set byte at %#x to %#x" % (dest+i, idc.Byte(src+i))
         ida_bytes.patch_byte(dest+i,ida_bytes.get_byte(src+i))
@@ -169,7 +169,7 @@ def PrefixRange(start, end, prefix) :
         n = idc.get_func_name(x)
         if n.startswith("sub_"):
             nn = prefix + n
-            print "Renaming %s to %s\n" % (n, nn)
+            print("Renaming %s to %s\n" % (n, nn))
             ida_name.set_name(x,nn)
         x = NextFunction(x)
 
@@ -240,7 +240,7 @@ def GetCanonicalName(f):
 #Put function in canonical format, given the function name and module name        
 def NameCanonical(f,mod_name,func_name):
     n = "%s_%s_%08x" % (mod_name,func_name,f)
-    print "Renaming %s to %s\n" % (idc.get_func_name(f),n)
+    print("Renaming %s to %s\n" % (idc.get_func_name(f),n))
     ida_name.force_name(f,n)
 
 #Put function in canonical format when it doesn't have a name, but you know the module name    
@@ -264,7 +264,7 @@ def CanonicalFuncRename(f,name):
     n = idc.get_func_name(f)
     parts = n.split("_")
     new_name = "%s_%s_%08x" % (parts[0],name,f)
-    print "Renaming %s to %s\n" % (n, new_name)
+    print("Renaming %s to %s\n" % (n, new_name))
     ida_name.set_name(f,new_name)
 
 #Rename the module name without changing the function name		
@@ -272,7 +272,7 @@ def RenameFuncWithNewMod(f,mod):
     n = idc.get_func_name(f)
     parts = n.split("_")
     new_name = "%s_%s_%08x" % (mod,parts[1],f)
-    print "Renaming %s to %s\n" % (n, new_name)
+    print("Renaming %s to %s\n" % (n, new_name))
     ida_name.set_name(f,new_name)
 
 #Rename a module (all functions that start with <mod>_)	
@@ -336,7 +336,7 @@ def CompileTextFromRange(start,end,sep):
                 #print "Found ref at %x: %x " % (faddr[c],d)
                 t = ida_nalt.get_str_type(d)
                 if ((t==0) or (t==3)):
-                     s += " " + sep + " " + GetStrLitContents(d)
+                     s += " " + sep + " " + GetStrLitContents(d).decode("utf-8")
         x = NextFunction(x)
     return s
 
