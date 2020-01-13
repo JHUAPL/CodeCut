@@ -158,7 +158,7 @@ def func_call_weight(f_start, f_end):
 		#if both scores are 0 (i.e. no references for the function or all refs are above the threshold)
 		#then skip the function altogether
 		if (score_1 == 0) and (score_2 == 0):
-			print "Skipping 0x%08x\n" % f
+			#print("Skipping 0x%08x\n" % f)
 			prevscore_1 = 0
 			prevscore_2 = 0
 			z1 = 1
@@ -187,7 +187,7 @@ def func_call_weight(f_start, f_end):
 		total_score = score_1 + score_2
 		
 		#Output scores in log window
-		print "0x%08x, %d , %f, %f, %f" % (f, c,score_1, score_2, total_score)
+		#print("0x%08x, %d , %f, %f, %f" % (f, c,score_1, score_2, total_score))
 		
 		#Add scores to the global function score list
 		finf = module.func_info(f,score_1,score_2)
@@ -218,9 +218,9 @@ def get_last_three(index):
 	if (c==3):
 		return p[0],p[1],p[2]
 	else:
-		print "Error: could not find 3 scored entries before index: %d  (%d,%d)" % (index, i, c)
+		print("Error: could not find 3 scored entries before index: %d  (%d,%d)" % (index, i, c))
 		return 0,0,0
-						
+
 def get_lfa_start():
 	c=0;
 	i=0;

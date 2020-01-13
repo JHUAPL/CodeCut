@@ -74,7 +74,7 @@ def gen_mod_graph(module_list, suffix):
 		c+=1
 
 	root_name = basicutils.GetRootName()
-	file = open(root_name + "_" + suffix + "_mod_graph.gv", "wb")
+	file = open(root_name + "_" + suffix + "_mod_graph.gv", "w")
 	
 	file.write("digraph g {\n")
 	
@@ -94,7 +94,7 @@ def gen_rename_script(module_list, suffix):
 	c=0
 
 	root_name = basicutils.GetRootName()
-	file = open(root_name + "_" + suffix + "_labels.py", "wb")
+	file = open(root_name + "_" + suffix + "_labels.py", "w")
 	
 	#if (IDA_VERSION < 7):
 	#	file.write("import basicutils_6x as basicutils\n");
@@ -120,7 +120,7 @@ def gen_map_file(module_list, suffix):
 	c=0
 
 	root_name = basicutils.GetRootName()
-	file = open(root_name + "_" + suffix + "_map.map", "wb")
+	file = open(root_name + "_" + suffix + "_map.map", "w")
 	
 	while (c<len(module_list)):
 		m=module_list[c]
@@ -137,7 +137,7 @@ def gen_map_file(module_list, suffix):
 def print_results(function_list, module_list1, module_list2):
 	c=0
 	root_name = basicutils.GetRootName()
-	file = open(root_name + "_cc_results.csv", "wb")
+	file = open(root_name + "_cc_results.csv", "w")
 	
 	#write header
 	file.write("Function,Function #,LFA Score 1,LFA Score 2,LFA Total,LFA Edge,MC Edge,Function Name,Suggested Mod Name (LFA), Suggested Mod Name(MC),Source Str Ref\n");

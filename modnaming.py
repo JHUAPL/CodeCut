@@ -111,9 +111,9 @@ def bracket_strings(start,end,b_brack,e_brack):
 				if (b_contents != "0x%x"):
 					b.append(tk[1:tk.find(e_brack)])
 			
-	print "bracket_strings tokens:"
-	print tokens
-	print b
+	print("bracket_strings tokens:")
+	print(tokens)
+	print(b)
 	
 	u_gram=""
 	u_gram_score=0
@@ -157,9 +157,9 @@ def source_file_strings(start,end):
 				ntk = tk
 			b.append(ntk)
 			
-	print "source_file_strings tokens:"
+	print("source_file_strings tokens:")
 	#print tokens
-	print b
+	print(b)
 	
 	#a better way to do this (if there are multiple)
 	#would be to sort, uniquify, and then make the name foo.c_and_bar.c
@@ -193,8 +193,8 @@ def common_strings(start,end):
 		else:
 			c+=1
 	
-	print "common_strings tokens:"
-	print tokens
+	print("common_strings tokens:")
+	print(tokens)
 	
 	if len(u_tokens) < CS_THRESHOLD:
 		#print "%08x - %08x : %s" % (start,end,"no string")
@@ -303,7 +303,7 @@ def guess_module_names(module_list):
 					unk_mod+=1
 		module_list[c].name = name
 		module_list[c].score = scr
-		print "%08x - %08x : %s (%d)" % (m.start,m.end,name,scr)
+		print("%08x - %08x : %s (%d)" % (m.start,m.end,name,scr))
 		c+=1
 		
 	return module_list
