@@ -26,7 +26,6 @@ import docking.widgets.table.threaded.TableAddRemoveStrategy;
 import ghidra.app.cmd.function.DeleteFunctionCmd;
 import ghidra.app.cmd.label.DeleteLabelCmd;
 import ghidra.app.cmd.label.RenameLabelCmd;
-import ghidra.app.plugin.core.symtable.SymbolTableAddRemoveStrategy;
 import ghidra.docking.settings.Settings;
 import ghidra.framework.cmd.Command;
 import ghidra.framework.cmd.CompoundCmd;

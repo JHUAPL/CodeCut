@@ -779,7 +779,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 								
 								String suggestedName = modNamer.readProcessOutput();
 								//if name is "unknown" (e.g. modnaming found no repeated strings) don't bother renaming 
-								if (suggestedName.equals("unknown") {
+								if (suggestedName.equals("unknown")) {
 									Msg.info(this, "No name guess found for module " + ns.getName() + ", leaving unchanged");
 									break;
 								}
