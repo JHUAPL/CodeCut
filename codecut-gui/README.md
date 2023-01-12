@@ -1,10 +1,9 @@
-# CodeCut / DeepCut GUI Plugin
 
-Ghidra Plugin for DeepCut / CodeCut GUI
+# Ghidra Plugin for CodeCut GUI
 
 ## Building and Installation
 
-JDK 11 (or newer) and Ghidra 9.1.0 (or newer) are required.
+Requirements are the same as the Ghidra build requirements, currently JDK 17 (or newer) is required for Ghidra 10.2.
 
 Ghidra's standard Gradle build system is used. Set the `GHIDRA_INSTALL_DIR` environment variable before building, or set it as a Gradle property (useful for building in an IDE).
 

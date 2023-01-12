@@ -1,10 +1,10 @@
 Ghidra Deepcut Analyzer
 =======================
 
-Implementation of the deepcut as a Ghidra one-shot analyzer. 
+Implementation of Deepcut as a Ghidra one-shot analyzer. 
 
 ## Building and Installation
-JDK 11 (or newer) and Ghidra 9.1.0 (or newer) are required.
+Requirements are the same as Ghidra.  Currently JDK 17 (or newer) is required (for Ghidra 10.2).
 
 Ghidra's standard Gradle build system is used. Set the
 `GHIDRA_INSTALL_DIR` environment variable before building, or set it as
@@ -13,7 +13,7 @@ a Gradle property (useful for building in an IDE):
 ### Environment variable
 ```bash
 $ export GHIDRA_INSTALL_DIR="/path/to/ghidra"
-$ ./gradlew
+$ ./gradle
 ```
 
 ### Gradle property
@@ -30,11 +30,12 @@ used by your Ghidra installation. If you have multiple Java runtime
 environments installed, select the correct JRE by setting the
 `JAVA_HOME` environment variable before building.
 
-### Python 3 
-The deepcut graph based machine learning model needs Python 3 to
-execute. The analyzer calls and external python process to execute the
-model on a graph representation of the binary. There are no GPU
-requirements since the model converge quickly even running in CPU mode.
+### Native Python 3 
+The Deepcut graph based machine learning model needs Python 3 to
+execute (outside of Ghidra). The analyzer calls an external Python 
+process to execute the model on a graph representation of the binary. 
+There are no GPU requirements since the model converge quickly even 
+running in CPU mode.
 
 #### Python 3 Path
 By default the analyzer use the command `/usr/local/bin/python3` to
@@ -73,3 +74,10 @@ Namespace field.
 
 If there are any errors please make sure you are using the proper path
 to Python 3 and the requirement dependencies installed.
+
+## Troubleshooting
+You can verify that dependencies are correct by navigating to:
+`~/.ghidra/.ghidra_${VERSION}/Extensions/deepcut-ghidra/data`
+and running `./python3 deepcut.py`.  Python will throw errors if it
+can't find dependencies.  If the process runs and sits there waiting
+for input, then the dependencies should be correct.
