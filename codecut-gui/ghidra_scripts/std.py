@@ -55,7 +55,7 @@ std = { "_init", "__cxa_finalize", "printf", "_start",
 # Ghidra header file
 # Needs to be replaced!! - Placeholder mostly
 ghidra_h = """
-ifndef ghidra_h
+#ifndef ghidra_h
 #define ghidra_h
  
 typedef unsigned char byte;   // 8-bit unsigned entity.
@@ -70,7 +70,7 @@ typedef int undefined8;
 // long
 typedef long unsigned int ulong;
 typedef long longlong;
- Range
+// Range
 // void
 // typedef void undefined;
 typedef void void4;
@@ -122,6 +122,7 @@ def getFunctionsInRange(start, end, externFunc, inRangeFunc):
             funcName = fm.getFunctionAt(getAddress(item))
 
             if funcName.getName() not in std:
+                print("Found function %s in range" % funcName.getName())
                 inRangeFunc.append(funcName.getEntryPoint().toString())
                 func = currentProgram.getFunctionManager().getFunctionAt(funcName.getEntryPoint())
 
@@ -130,9 +131,9 @@ def getFunctionsInRange(start, end, externFunc, inRangeFunc):
                     
                 for item in func_list:
                     print(item)
-                            #item = item.replace(",", "")
-                            #if item.getEntryPoint() not in inRangeFunc and item.getName() not in std:
-                                #externFunc.append(item.get)
+                    #item = item.replace(",", "")
+                    if item.getEntryPoint() not in inRangeFunc and item.getName() not in std:
+                        externFunc.append(item.getName())
 
 
 # Wrapper function to write to file
@@ -141,10 +142,16 @@ def writeToFile(filename, extern, label):
     # External functions
     print >>file, """#include "ghidra.h"\n"""
     for item in extern:
-        function = getGlobalFunctions(item)[0]
-        results = function.getSignature().getPrototypeString()
-        results = "extern " + results + ";"
-        print >>file, results
+        print("extern:",item)
+        functionList = getGlobalFunctions(item)
+        print(functionList)
+        if len(functionList) > 0:
+            function = functionList[0]
+            #if function is not None:
+            results = function.getSignature().getPrototypeString()
+            results = "extern " + results + ";"
+            print("Results:", results)
+            print >>file, results
 
     # Decompiled functions
     for item in label:
