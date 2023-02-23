@@ -20,16 +20,16 @@ ifc.openProgram(program)
 std = { "_init", "__cxa_finalize", "printf", "_start",
         "deregister_tm_clones", "register_tm_clones", "__do_global_dtors_aux",
         "frame_dummy", "_fini", "__libc_start_main", "_ITM_deregisterTMCloneTable",
-        "__gmon_start__", "_ITM_registerTMCloneTable", "__cxa_finalize", "FUN_00101020",
+        "__gmon_start__", "_ITM_registerTMCloneTable", "__cxa_finalize",
         "puts", "_exit", "_write", "_sbrk", "_read", "_lseek", "_kill", "_isatty", "_gettimeofday",
         "_getpid", "_fstat", "_close", "__clzsi2", "__clzdi2", "__udivmoddi4", "__aeabi_uldivmod",
         "__aeabi_d2iz", "__unorddf2", "__aeabi_dcmpgt", "__aeabi_dcmpge", "__aeabi_dcmple",
         "__aeabi_dcmplt", "__aeabi_dcmpeq", "__aeabi_idivmod", ".divsi3_skip_div0_test",
-        "__divsi3", "__aeabi_uidivmod", "__aeabi_uidiv", "FUN_000125c8", "FUN_000123d0", 
+        "__divsi3", "__aeabi_uidivmod", "__aeabi_uidiv", 
         "_getpid_r", "_kill_r", "__sigtramp", "_init_signal", "signal", "raise", "__sigtramp_r",
         "_raise_r", "_signal_r", "_init_signal_r", "abort", "__ascii_wctomb", "_wctomb_r",
         "wcrtomb", "__aeabi_cdcmpeq", "__aeabi_cdrcmple", "__nedf2", "__ledf2", "__gedf2",
-        "FUN_00012cec", "__divdf3", "FUN_00012ab8", "__muldf3", "__aeabi_idiv0", "_wcrtomb_r",
+        "__divdf3", "__muldf3", "__aeabi_idiv0", "_wcrtomb_r",
         "__swbuf", "__swbuf_r", "strcmp", "_realloc_r", "_read_r", "memmove", "__ascii_mbtowc",
         "_mbtowc_r", "_lseek_r", "setlocale", "__locale_mb_cur_max", "_setlocale_r", "_isatty_r",
         "__sfvwrite_r", "_fstat_r", "fputwc", "_fputwc_r", "__fputwc", "fiprintf", "_fiprintf_r",
@@ -57,22 +57,24 @@ std = { "_init", "__cxa_finalize", "printf", "_start",
 ghidra_h = """
 #ifndef ghidra_h
 #define ghidra_h
- 
-typedef unsigned char byte;   // 8-bit unsigned entity.
+
+#include "stdint.h"
+
+typedef uint8_t byte;   // 8-bit unsigned entity.
 typedef byte *        pbyte;  // Pointer to BYTE.
  
 // int
 typedef unsigned int uint;
-typedef int undefined;
-typedef int undefined4;
-typedef int undefined8;
+typedef uint8_t undefined;
+typedef uint16_t undefined2;
+typedef uint32_t undefined4;
+typedef uint64_t undefined8;
  
 // long
 typedef long unsigned int ulong;
-typedef long longlong;
-// Range
+typedef long long longlong;
+
 // void
-// typedef void undefined;
 typedef void void4;
 typedef void void8;
 #endif
