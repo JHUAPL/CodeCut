@@ -1,26 +1,30 @@
 /* ###
-* © 2022 The Johns Hopkins University Applied Physics Laboratory LLC
-* (JHU/APL).
-*
-* NO WARRANTY, NO LIABILITY. THIS MATERIAL IS PROVIDED “AS IS.” JHU/APL
-* MAKES NO REPRESENTATION OR WARRANTY WITH RESPECT TO THE PERFORMANCE OF
-* THE MATERIALS, INCLUDING THEIR SAFETY, EFFECTIVENESS, OR COMMERCIAL
-* VIABILITY, AND DISCLAIMS ALL WARRANTIES IN THE MATERIAL, WHETHER
-* EXPRESS OR IMPLIED, INCLUDING (BUT NOT LIMITED TO) ANY AND ALL IMPLIED
-* WARRANTIES OF PERFORMANCE, MERCHANTABILITY, FITNESS FOR A PARTICULAR
-* PURPOSE, AND NON-INFRINGEMENT OF INTELLECTUAL PROPERTY OR OTHER THIRD
-* PARTY RIGHTS. ANY USER OF THE MATERIAL ASSUMES THE ENTIRE RISK AND
-* LIABILITY FOR USING THE MATERIAL. IN NO EVENT SHALL JHU/APL BE LIABLE
-* TO ANY USER OF THE MATERIAL FOR ANY ACTUAL, INDIRECT, CONSEQUENTIAL,
-* SPECIAL OR OTHER DAMAGES ARISING FROM THE USE OF, OR INABILITY TO USE,
-* THE MATERIAL, INCLUDING, BUT NOT LIMITED TO, ANY DAMAGES FOR LOST
-* PROFITS.
-*
-* This material is based upon work supported by the Defense Advanced Research
-* Projects Agency (DARPA) and Naval Information Warfare Center Pacific (NIWC Pacific)
-* under Contract Number N66001-20-C-4024.
-*
-* HAVE A NICE DAY.
+ * © 2022 The Johns Hopkins University Applied Physics Laboratory LLC (JHU/APL).  
+ * All Rights Reserved.
+ * 
+ * This material may be only be used, modified, or reproduced by or for the U.S. 
+ * Government pursuant to the license rights granted under the clauses at 
+ * DFARS 252.227-7013/7014 or FAR 52.227-14. For any other permission, please 
+ * contact the Office of Technology Transfer at JHU/APL.
+ * 
+ * NO WARRANTY, NO LIABILITY. THIS MATERIAL IS PROVIDED “AS IS.” JHU/APL MAKES 
+ * NO REPRESENTATION OR WARRANTY WITH RESPECT TO THE PERFORMANCE OF THE MATERIALS, 
+ * INCLUDING THEIR SAFETY, EFFECTIVENESS, OR COMMERCIAL VIABILITY, AND DISCLAIMS 
+ * ALL WARRANTIES IN THE MATERIAL, WHETHER EXPRESS OR IMPLIED, INCLUDING 
+ * (BUT NOT LIMITED TO) ANY AND ALL IMPLIED WARRANTIES OF PERFORMANCE, 
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT OF 
+ * INTELLECTUAL PROPERTY OR OTHER THIRD PARTY RIGHTS. ANY USER OF THE MATERIAL 
+ * ASSUMES THE ENTIRE RISK AND LIABILITY FOR USING THE MATERIAL. IN NO EVENT SHALL 
+ * JHU/APL BE LIABLE TO ANY USER OF THE MATERIAL FOR ANY ACTUAL, INDIRECT, 
+ * CONSEQUENTIAL, SPECIAL OR OTHER DAMAGES ARISING FROM THE USE OF, OR INABILITY TO 
+ * USE, THE MATERIAL, INCLUDING, BUT NOT LIMITED TO, ANY DAMAGES FOR LOST PROFITS. 
+ *
+ * HAVE A NICE DAY.
+ */
+
+/* This material is based upon work supported by the Defense Advanced Research
+ * Projects Agency (DARPA) and Naval Information Warfare Center Pacific (NIWC Pacific)
+ * under Contract Number N66001-20-C-4024.
 */
 
 package codecutguiv2;
@@ -32,21 +36,23 @@ import java.util.List;
 
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
-
+import javax.swing.JTable;
 
 import docking.ActionContext;
 import docking.DockingUtils;
 import docking.action.KeyBindingData;
 import ghidra.app.context.ProgramActionContext;
 import ghidra.app.context.ProgramSymbolActionContext;
+import ghidra.app.services.GoToService;
 import ghidra.app.util.SymbolInspector;
 import ghidra.framework.options.SaveState;
 import ghidra.framework.plugintool.ComponentProviderAdapter;
+import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressFactory;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.util.HelpLocation;
-import ghidra.util.Msg;
 import ghidra.util.table.GhidraTable;
 import resources.ResourceManager;
 
@@ -59,10 +65,12 @@ class SymbolProvider extends ComponentProviderAdapter {
 	private SymbolTableModel symbolKeyModel;
 	private NamespacePanel namespacePanel;
 	public FilterDialog filterDialog; 
+	private GoToService gotoService; 
 	
 	SymbolProvider(CodeCutGUIPlugin plugin) {
 		super(plugin.getTool(), "CodeCut Table", plugin.getName(), ProgramActionContext.class);
 		this.plugin = plugin;
+		gotoService = plugin.getGoToService();
 
 		setIcon(ICON);
 		addToToolbar();
@@ -92,6 +100,20 @@ class SymbolProvider extends ComponentProviderAdapter {
 		}
 
 		List<Symbol> symbols = namespacePanel.getSelectedSymbols();
+		Iterator<GhidraTable> tables = namespacePanel.getAllTables().iterator();
+		AddressFactory af = program.getAddressFactory();
+		
+		// Hack to go to proper function when text filtering 
+		while(tables.hasNext()) {
+			GhidraTable table = tables.next();
+			if (table.getSelectedRow() >= 0 && table.getSelectedRow() <= table.getRowCount()) {
+				Address addr = af.getAddress(table.getValueAt(table.getSelectedRow(), 1).toString());
+				if (addr != null && namespacePanel.isTextFiltering()) {
+					gotoService.goTo(addr);
+				}
+				return new ProgramSymbolActionContext(this, program, symbols, getTable()); 
+			}
+		}
 		return new ProgramSymbolActionContext(this, program, symbols, getTable());
 	}
 
@@ -193,11 +215,16 @@ class SymbolProvider extends ComponentProviderAdapter {
 	
 	private String generateSubTitle() {
 		SymbolFilter filter = symbolKeyModel.getFilter();
-
-		int rowCount = symbolKeyModel.getRowCount();
-		int unfilteredCount = symbolKeyModel.getUnfilteredRowCount();
-
-		if (rowCount != unfilteredCount) {
+		int rowCount = 0;
+		int unfilteredCount = 0; 
+		Iterator<GhidraTable> tables = getAllTables().iterator(); 
+		Iterator<SymbolPanel> panels = getSymPanels(); 
+		while(tables.hasNext() && panels.hasNext()) {
+			JTable table = tables.next();
+			rowCount += table.getRowCount();
+			unfilteredCount += panels.next().getModel().getUnfilteredRowCount(); 
+		}
+		if (namespacePanel.isTextFiltering()) {
 			return " (Text filter matched " + rowCount + " of " + unfilteredCount + " symbols)";
 		}
 		if (filter.acceptsAll()) {

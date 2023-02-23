@@ -1,26 +1,30 @@
 /* ###
-* © 2022 The Johns Hopkins University Applied Physics Laboratory LLC
-* (JHU/APL).
-*
-* NO WARRANTY, NO LIABILITY. THIS MATERIAL IS PROVIDED “AS IS.” JHU/APL
-* MAKES NO REPRESENTATION OR WARRANTY WITH RESPECT TO THE PERFORMANCE OF
-* THE MATERIALS, INCLUDING THEIR SAFETY, EFFECTIVENESS, OR COMMERCIAL
-* VIABILITY, AND DISCLAIMS ALL WARRANTIES IN THE MATERIAL, WHETHER
-* EXPRESS OR IMPLIED, INCLUDING (BUT NOT LIMITED TO) ANY AND ALL IMPLIED
-* WARRANTIES OF PERFORMANCE, MERCHANTABILITY, FITNESS FOR A PARTICULAR
-* PURPOSE, AND NON-INFRINGEMENT OF INTELLECTUAL PROPERTY OR OTHER THIRD
-* PARTY RIGHTS. ANY USER OF THE MATERIAL ASSUMES THE ENTIRE RISK AND
-* LIABILITY FOR USING THE MATERIAL. IN NO EVENT SHALL JHU/APL BE LIABLE
-* TO ANY USER OF THE MATERIAL FOR ANY ACTUAL, INDIRECT, CONSEQUENTIAL,
-* SPECIAL OR OTHER DAMAGES ARISING FROM THE USE OF, OR INABILITY TO USE,
-* THE MATERIAL, INCLUDING, BUT NOT LIMITED TO, ANY DAMAGES FOR LOST
-* PROFITS.
-*
-* This material is based upon work supported by the Defense Advanced Research
-* Projects Agency (DARPA) and Naval Information Warfare Center Pacific (NIWC Pacific)
-* under Contract Number N66001-20-C-4024.
-*
-* HAVE A NICE DAY.
+ * © 2021 The Johns Hopkins University Applied Physics Laboratory LLC (JHU/APL).  
+ * All Rights Reserved.
+ * 
+ * This material may be only be used, modified, or reproduced by or for the U.S. 
+ * Government pursuant to the license rights granted under the clauses at 
+ * DFARS 252.227-7013/7014 or FAR 52.227-14. For any other permission, please 
+ * contact the Office of Technology Transfer at JHU/APL.
+ * 
+ * NO WARRANTY, NO LIABILITY. THIS MATERIAL IS PROVIDED “AS IS.” JHU/APL MAKES 
+ * NO REPRESENTATION OR WARRANTY WITH RESPECT TO THE PERFORMANCE OF THE MATERIALS, 
+ * INCLUDING THEIR SAFETY, EFFECTIVENESS, OR COMMERCIAL VIABILITY, AND DISCLAIMS 
+ * ALL WARRANTIES IN THE MATERIAL, WHETHER EXPRESS OR IMPLIED, INCLUDING 
+ * (BUT NOT LIMITED TO) ANY AND ALL IMPLIED WARRANTIES OF PERFORMANCE, 
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT OF 
+ * INTELLECTUAL PROPERTY OR OTHER THIRD PARTY RIGHTS. ANY USER OF THE MATERIAL 
+ * ASSUMES THE ENTIRE RISK AND LIABILITY FOR USING THE MATERIAL. IN NO EVENT SHALL 
+ * JHU/APL BE LIABLE TO ANY USER OF THE MATERIAL FOR ANY ACTUAL, INDIRECT, 
+ * CONSEQUENTIAL, SPECIAL OR OTHER DAMAGES ARISING FROM THE USE OF, OR INABILITY TO 
+ * USE, THE MATERIAL, INCLUDING, BUT NOT LIMITED TO, ANY DAMAGES FOR LOST PROFITS. 
+ *
+ * HAVE A NICE DAY.
+ */
+
+/* This material is based upon work supported by the Defense Advanced Research
+ * Projects Agency (DARPA) and Naval Information Warfare Center Pacific (NIWC Pacific)
+ * under Contract Number N66001-20-C-4024.
 */
 
 package codecutguiv2;
@@ -49,6 +53,8 @@ import ghidra.app.events.ProgramActivatedPluginEvent;
 import ghidra.app.events.ProgramLocationPluginEvent;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.core.symboltree.actions.*;
+import ghidra.app.script.GhidraScript;
+import ghidra.app.script.GhidraState;
 import ghidra.app.services.BlockModelService;
 import ghidra.app.services.GoToService;
 import ghidra.app.util.SymbolInspector;
@@ -70,12 +76,14 @@ import ghidra.program.util.DefinedDataIterator;
 import ghidra.program.util.GhidraProgramUtilities;
 import ghidra.program.util.ProgramChangeRecord;
 import ghidra.program.util.ProgramLocation;
+import ghidra.python.GhidraPythonInterpreter;
+import ghidra.python.PythonScript;
+import ghidra.util.HTMLUtilities;
 import ghidra.util.HelpLocation;
 import ghidra.util.Msg;
 import ghidra.util.Swing;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.table.GhidraTable;
-import ghidra.util.table.SelectionNavigationAction;
 import ghidra.util.task.SwingUpdateManager;
 import ghidra.util.task.*;
 import ghidra.util.datastruct.*;
@@ -109,6 +117,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 
 	private final static String OPTION_NAME_PYTHON_EXEC = "Python Executable";
 	private final static String OPTION_DEFAULT_PYTHON_EXEC = "/projects/venv/bin/python3";
+	//private final static String OPTION_DEFAULT_PYTHON_EXEC = "/usr/local/bin/python3"; // for testing
 	private String pythonExec = OPTION_DEFAULT_PYTHON_EXEC;
 	
 	private DockingAction openRefsAction;
@@ -120,6 +129,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 	private ToggleDockingAction referencesToAction;
 	private ToggleDockingAction instructionsFromAction;
 	private ToggleDockingAction dataFromAction;
+	private ToggleDockingAction selectionNavigationAction; 
 
 	private SymbolProvider symProvider;
 	private ReferenceProvider refProvider;
@@ -131,10 +141,11 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 	private GoToService gotoService;
 	private BlockModelService blockModelService;
 	private SwingUpdateManager swingMgr;
+	private DecompileRangeProvider decompProvider; 
 	
 	private Map<Namespace, List<String>> stringMap;
 	private Map<Namespace, String> suggestedModuleNames;
-
+	
 	public CodeCutGUIPlugin(PluginTool tool) {
 		super(tool);
 
@@ -160,11 +171,13 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		renameProvider = new RenameProvider(this);
 		createProvider = new CreateProvider(this);
 		combineProvider = new CombineProvider(this);
+		decompProvider = new DecompileRangeProvider(this);
 
 		createNamespaceActions();
 		createSymActions();
 		createRefActions();
 		createMapActions();
+		createOutputActions(); 
 		
 		inspector = new SymbolInspector(getTool(), symProvider.getComponent());
 	}
@@ -558,21 +571,27 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		tool.addLocalAction(symProvider, setFilterAction);
 
 		// override the SelectionNavigationAction to handle both tables that this plugin uses
-		List<GhidraTable> tableList = symProvider.getAllTables();
-		Iterator<GhidraTable> it = tableList.iterator();
-		while (it.hasNext()) {
-			GhidraTable t = it.next();
-			DockingAction selectionNavigationAction = 
-					new SelectionNavigationAction(this, t) {
-				
-				@Override 
-				protected void toggleSelectionListening(boolean listen) {
-					super.toggleSelectionListening(listen);
-					refProvider.getTable().setNavigateOnSelectionEnabled(listen);
+		selectionNavigationAction = new ToggleDockingAction("Set Navigation", getName()) {
+			private boolean selected = false; 
+			@Override
+			public void actionPerformed(ActionContext context) {
+				selected = !selected; 
+				setSelected(selected);
+				List<GhidraTable> tableList = symProvider.getAllTables();
+				Iterator<GhidraTable> it = tableList.iterator();
+				while (it.hasNext()) {
+					GhidraTable t = it.next();
+					t.setNavigateOnSelectionEnabled(selected);
 				}
-			};
-			tool.addLocalAction(symProvider, selectionNavigationAction);
-		}
+			}
+		};
+		icon = Icons.NAVIGATE_ON_INCOMING_EVENT_ICON;
+		selectionNavigationAction.setToolBarData(new ToolBarData(icon));
+		selectionNavigationAction.setDescription(HTMLUtilities.toHTML("Toggle <b>on</b> means to navigate to the location\n" +
+				"in the program that corresponds to the selected row,\n as the selection changes."));
+		selectionNavigationAction.setSelected(true);
+		tool.addLocalAction(symProvider, selectionNavigationAction);
+		
 		
 		String pinnedPopupGroup = "2"; // second group
 		DockingAction setPinnedAction = new PinSymbolAction(getName(), pinnedPopupGroup);
@@ -710,6 +729,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 				if (stringMap != null) {
 					guessModuleNames();
 				}
+				symProvider.reload(); 
 				
 			}
 		};
@@ -719,6 +739,25 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		moduleNameGuessingAction.setHelpLocation(new HelpLocation("Map", moduleNameGuessingAction.getName()));
 		moduleNameGuessingAction.setAddToAllWindows(true);
 		tool.addAction(moduleNameGuessingAction);
+	}
+	
+	private void createOutputActions() { 
+		DockingAction decompileRange = new DockingAction("Decompile Range", getName(), KeyBindingType.SHARED) {
+			@Override 
+			public void actionPerformed(ActionContext context) {
+				decompProvider.setFunc(symProvider.getCurrentSymbol().getAddress());
+				decompProvider.open(); 
+			}
+			
+			@Override 
+			public boolean isEnabledForContext(ActionContext context) {
+				return symProvider.getCurrentSymbol() != null;
+			}
+		};
+		decompileRange.setPopupMenuData(
+				new MenuData(new String[] { "Decompile Range" }));
+		decompileRange.setDescription("Decompile Range");
+		tool.addLocalAction(symProvider, decompileRange);
 	}
 	
 	private void guessModuleNames() {
@@ -1060,7 +1099,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		return null;
 	}
 	
-	private File getMapFile() {
+	protected File getMapFile() {
 		GhidraFileChooser fileChooser = new GhidraFileChooser(this.symProvider.getComponent());
 		String dir = Preferences.getProperty(Preferences.LAST_EXPORT_DIRECTORY);
 		if (dir != null) {
@@ -1119,5 +1158,85 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		// by toggling the state
 		action.setSelected(false);
 		action.setSelected(true);
+	}
+	protected File getCFile() {
+		GhidraFileChooser fileChooser = new GhidraFileChooser(this.symProvider.getComponent());
+		String dir = Preferences.getProperty(Preferences.LAST_EXPORT_DIRECTORY);
+		if (dir != null) {
+			File file = new File(dir);
+			fileChooser.setCurrentDirectory(file);
+			fileChooser.setTitle("Choose Save C File");
+			fileChooser.setApproveButtonText("Choose Save C File");
+			fileChooser.setApproveButtonToolTipText("Choose filename for C file");
+		}
+		fileChooser.rescanCurrentDirectory();
+		File file = fileChooser.getSelectedFile();
+		if (file != null) {
+			File parent = file.getParentFile();
+			if (parent != null) {
+				Preferences.setProperty(Preferences.LAST_EXPORT_DIRECTORY, parent.getAbsolutePath());
+			}
+			String name = file.getName();
+			if (!file.getName().endsWith(".c")) {
+				file = new File(file.getParentFile(), name + ".c");
+			}
+			if (file.exists()) {
+				if (OptionDialog.showOptionDialog(this.symProvider.getComponent(), "Overwrite Existing File?", 
+						"The file " + file.getAbsolutePath() + " already exists. \nDo you want to overwrite it?", 
+						"Yes", OptionDialog.QUESTION_MESSAGE) != OptionDialog.OPTION_ONE) {
+					file = null;
+				}
+				else {
+					try {
+						// delete existing file
+						deleteFile(file);
+					}
+					catch (IOException e) {
+						Msg.showError(this, this.symProvider.getComponent(), "C File Overwrite Failed", e.getMessage());
+						return null;
+					}
+				}
+			}
+		}
+		
+		return file;	
+	}
+	public void exportC(String startAddr, String endAddr) {
+		File file = getCFile();
+		ExportC ec = new ExportC(startAddr, endAddr, file);
+		try {
+			GhidraState state = new GhidraState(tool, tool.getProject(), GhidraProgramUtilities.getCurrentProgram(tool), null, null, null);
+			ConsoleTaskMonitor monitor = new ConsoleTaskMonitor(); 
+			PrintWriter pw = new PrintWriter(file);
+			ec.execute(state, monitor, pw);
+		} catch (Exception e) {
+			e.printStackTrace();
+		} 
+	
+	}
+	private class ExportC extends PythonScript{
+		Program program = GhidraProgramUtilities.getCurrentProgram(tool);
+		GhidraState state = new GhidraState(tool, tool.getProject(), program, null, null, null);
+		String start_addr; 
+		String end_addr;
+		String outfile; 
+		
+		public ExportC(String start, String end, File file) {
+			this.start_addr = start;
+			this.end_addr = end; 
+			this.outfile = file.getAbsolutePath(); 
+			this.state.addEnvironmentVar("ghidra.python.interpreter", GhidraPythonInterpreter.get());
+		
+		}
+		@Override
+		public void run() {
+			String[] args = {start_addr, end_addr, outfile}; 
+			try {
+				runScript("range.py", args);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
 	}
 }
