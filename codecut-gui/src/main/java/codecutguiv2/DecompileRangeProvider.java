@@ -116,6 +116,8 @@ class DecompileRangeProvider extends ComponentProviderAdapter implements ActionL
 		if (this.startAddr == null) {
 			this.startAddr = firstTextField.getText();
 			this.endAddr = secondTextField.getText();
+			//the right thing to do here would be to try to convert to Address
+			//and throw an error if that doesn't work
 		}
 		
 		if (this.startAddr != null && this.endAddr != null) {

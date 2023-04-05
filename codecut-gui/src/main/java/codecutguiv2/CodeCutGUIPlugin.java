@@ -32,6 +32,7 @@ package codecutguiv2;
 import java.awt.Cursor;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Iterator;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,14 +50,17 @@ import docking.widgets.filechooser.GhidraFileChooser;
 import ghidra.app.CorePluginPackage;
 import ghidra.app.context.ProgramActionContext;
 import ghidra.app.context.ProgramContextAction;
+import ghidra.app.decompiler.component.DecompilerController;
 import ghidra.app.events.ProgramActivatedPluginEvent;
 import ghidra.app.events.ProgramLocationPluginEvent;
 import ghidra.app.plugin.PluginCategoryNames;
+import ghidra.app.plugin.core.decompile.DecompilerProvider;
 import ghidra.app.plugin.core.symboltree.actions.*;
 import ghidra.app.script.GhidraScript;
 import ghidra.app.script.GhidraState;
 import ghidra.app.services.BlockModelService;
 import ghidra.app.services.GoToService;
+//import ghidra.app.services.DecExtendService;
 import ghidra.app.util.SymbolInspector;
 import ghidra.framework.model.*;
 import ghidra.framework.options.SaveState;
@@ -145,6 +149,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 	
 	private Map<Namespace, List<String>> stringMap;
 	private Map<Namespace, String> suggestedModuleNames;
+	//private DecExtendService decExtService; 
 	
 	public CodeCutGUIPlugin(PluginTool tool) {
 		super(tool);
@@ -177,8 +182,13 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		createSymActions();
 		createRefActions();
 		createMapActions();
-		createOutputActions(); 
-		
+		createExportActions(); 
+
+		//decExtService = tool.getService(DecExtendService.class);
+		//if (decExtService == null) {
+		//	Msg.info(new Object(),  "ERROR: Decompiler Extension is not installed");
+		//}
+
 		inspector = new SymbolInspector(getTool(), symProvider.getComponent());
 	}
 
@@ -221,6 +231,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		}
 		gotoService = null;
 		blockModelService = null;
+		//decExtService = null;
 
 		if (inspector != null) {
 			inspector.dispose();
@@ -729,8 +740,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 				if (stringMap != null) {
 					guessModuleNames();
 				}
-				symProvider.reload(); 
-				
+				symProvider.reload();
 			}
 		};
 		MenuData guessModule = new MenuData(new String[] {ToolConstants.MENU_ANALYSIS, "Guess Module Names"}, null, "Guess Module Names");
@@ -741,12 +751,108 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		tool.addAction(moduleNameGuessingAction);
 	}
 	
-	private void createOutputActions() { 
-		DockingAction decompileRange = new DockingAction("Decompile Range", getName(), KeyBindingType.SHARED) {
+	private void createExportActions() {
+		
+		/*
+		DockingAction exportDwarf = 
+				new DockingAction("export_dwarf", this.getName()) {
 			@Override 
+			public boolean isEnabledForContext(ActionContext context) {
+				return symProvider.getCurrentSymbol() != null;
+			}
+			@Override
+			public void actionPerformed(ActionContext programContext) {
+				if (decExtService == null) {
+					Msg.info(new Object(),  "Cannot export DWARF without decompiler extension service");
+					return;
+				}
+				if (decExtService.getMapping() != null) {
+					decExtService.exportDWARF(symProvider.getCurrentSymbol().getParentNamespace().getName());
+				}
+			}
+			
+		};
+		
+		MenuData menuData = new MenuData(new String[] {"Export", "Export to C/ELF with DWARF" }, null, "Export");
+		menuData.setMenuSubGroup("1");
+		exportDwarf.setPopupMenuData(menuData);
+		//exportDwarf.setAddToAllWindows(true);
+		tool.addLocalAction(symProvider, exportDwarf);
+		*/
+		
+		DockingAction exportC = 
+				new DockingAction("export_c", this.getName()) {
+			@Override 
+			public boolean isEnabledForContext(ActionContext context) {
+				return symProvider.getCurrentSymbol() != null;
+			}
+			@Override
 			public void actionPerformed(ActionContext context) {
 				decompProvider.setFunc(symProvider.getCurrentSymbol().getAddress());
 				decompProvider.open(); 
+			}
+			
+		};
+		
+		MenuData menuData = new MenuData(new String[] {"Export", "Export to C" }, null, "Export");
+		menuData.setMenuSubGroup("1");
+		exportC.setPopupMenuData(menuData);
+		//exportC.setAddToAllWindows(true);
+		tool.addLocalAction(symProvider, exportC);
+		
+		DockingAction exportElf = 
+				new DockingAction("export_elf", this.getName()) {
+			@Override 
+			public boolean isEnabledForContext(ActionContext context) {
+				return symProvider.getCurrentSymbol() != null;
+			}
+			@Override
+			public void actionPerformed(ActionContext programContext) {
+				Namespace ns = symProvider.getCurrentSymbol().getParentNamespace(); // for o output
+				Msg.info(new Object(), ns.getName());
+				GhidraState gstate = new GhidraState(tool, tool.getProject(), currentProgram, null, null, null);
+				OFileExporter outputELF = new OFileExporter(gstate, ns.getName());
+				try {
+					outputELF.run();
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				} 
+			}
+			
+		};
+		
+		menuData = new MenuData(new String[] {"Export", "Export to ELF" }, null, "Export");
+		menuData.setMenuSubGroup("1");
+		exportElf.setPopupMenuData(menuData);
+		//exportElf.setAddToAllWindows(true);
+		tool.addLocalAction(symProvider, exportElf);
+		
+/*
+		DockingAction updateMapping = new DockingAction("Update Decompiler Mapping", getName()) {
+			@Override 
+			public void actionPerformed(ActionContext context) {
+				gotoService.goTo(symProvider.getCurrentSymbol().getProgramLocation());
+				if (decExtService == null) { 
+					Msg.info(new Object(),  "Cannot update mapping without decompiler extension services");
+					return; 
+				}
+				Set<String> funcs = decExtService.updatedFuncs();
+				if (funcs != null && funcs.contains(symProvider.getCurrentSymbol().getName())) {
+					decExtService.getMapByFuncName(symProvider.getCurrentSymbol().getName());
+					Msg.info(new Object(), "UPDATED MAPPING EXISTS FOR: " + symProvider.getCurrentSymbol().getName());
+				}
+				else {
+					// Reset decompiler process 
+					DecompilerController decompileController = ((DecompilerProvider)tool.getComponentProvider("Decompiler")).getController();
+					decompileController.resetDecompiler();
+					try {
+						decExtService.updateMapping();
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				
 			}
 			
 			@Override 
@@ -754,11 +860,13 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 				return symProvider.getCurrentSymbol() != null;
 			}
 		};
-		decompileRange.setPopupMenuData(
-				new MenuData(new String[] { "Decompile Range" }));
-		decompileRange.setDescription("Decompile Range");
-		tool.addLocalAction(symProvider, decompileRange);
+		updateMapping.setPopupMenuData(
+				new MenuData(new String[] { "Update Decompiler Mapping" }, "2"));
+		tool.addLocalAction(symProvider, updateMapping);
+*/
+
 	}
+
 	
 	private void guessModuleNames() {
 		Task guessNamesTask = new Task("Guess Module Names", true, true, true) {
@@ -1159,6 +1267,19 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		action.setSelected(false);
 		action.setSelected(true);
 	}
+	
+	public boolean getMapping(PluginTool tool) {
+/*		try {
+			decExtService.updateMapping();
+		} catch (Exception e) {
+			e.printStackTrace();
+			return false; 
+		} 
+		Msg.info(new Object(),  decExtService.getMapping());
+*/
+		return true;
+	}
+	
 	protected File getCFile() {
 		GhidraFileChooser fileChooser = new GhidraFileChooser(this.symProvider.getComponent());
 		String dir = Preferences.getProperty(Preferences.LAST_EXPORT_DIRECTORY);
@@ -1203,39 +1324,66 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 	}
 	public void exportC(String startAddr, String endAddr) {
 		File file = getCFile();
-		ExportC ec = new ExportC(startAddr, endAddr, file);
+		CExporter cExporter = new CExporter(startAddr, endAddr, file);
 		try {
 			GhidraState state = new GhidraState(tool, tool.getProject(), GhidraProgramUtilities.getCurrentProgram(tool), null, null, null);
 			ConsoleTaskMonitor monitor = new ConsoleTaskMonitor(); 
 			PrintWriter pw = new PrintWriter(file);
-			ec.execute(state, monitor, pw);
+			cExporter.execute(state, monitor, pw);
 		} catch (Exception e) {
 			e.printStackTrace();
 		} 
 	
 	}
-	private class ExportC extends PythonScript{
+	private class CExporter extends PythonScript{
 		Program program = GhidraProgramUtilities.getCurrentProgram(tool);
 		GhidraState state = new GhidraState(tool, tool.getProject(), program, null, null, null);
 		String start_addr; 
 		String end_addr;
 		String outfile; 
+		String path; 
 		
-		public ExportC(String start, String end, File file) {
+		public CExporter(String start, String end, File file) {
 			this.start_addr = start;
 			this.end_addr = end; 
 			this.outfile = file.getAbsolutePath(); 
 			this.state.addEnvironmentVar("ghidra.python.interpreter", GhidraPythonInterpreter.get());
-		
+			this.path = this.outfile.substring(0, this.outfile.lastIndexOf("/")+1);
 		}
 		@Override
 		public void run() {
+			//Leaving this in for if/when we can reintroduce DWARF output
+			//this is what ghidra2dwarf was using
+			//String[] args = {"-c", start_addr, end_addr, outfile, path}; 
 			String[] args = {start_addr, end_addr, outfile}; 
 			try {
-				runScript("range.py", args);
+				//runScript("ghidra2dwarf.py", args);
+				runScript("range.py",args);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
+		}
+		
+	}
+	private class OFileExporter extends GhidraScript{
+		
+		GhidraState state;
+		PrintWriter pw; 
+		String objName; 
+		ConsoleTaskMonitor monitor = new ConsoleTaskMonitor(); 
+
+		public OFileExporter(GhidraState gstate, String objName){
+			this.state = gstate;
+			this.objName = objName; 
+		}
+		@Override
+		protected void run() throws Exception {
+			String [] scriptArgs = {this.objName};
+			String path = state.getCurrentProgram().getExecutablePath(); 
+			this.pw = new PrintWriter(path.substring(0, path.lastIndexOf("/")+1) + this.objName + "_modified.o"); 
+			this.set(state, monitor, pw); 
+			runScript("OutputObjFile.py", scriptArgs, this.state); 
+			
 		}
 		
 	}

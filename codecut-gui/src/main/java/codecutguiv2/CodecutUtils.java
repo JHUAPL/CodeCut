@@ -802,6 +802,7 @@ public class CodecutUtils {
 		Symbol currSym = s;
 		updatingNamespace = true;
 		
+		Msg.info(new Object(),"Splitting namespace: old(" + a.toString() + "), new (" + s.getAddress().toString() + "," + a.getMaxAddress().toString() + ")");
 		int transactionID = p.startTransaction("nsSplit");
 		try {
 			do {

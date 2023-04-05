@@ -50,9 +50,11 @@ import ghidra.framework.options.SaveState;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.listing.Program;
 import ghidra.program.model.address.Address;
+import ghidra.program.model.address.AddressSetView;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.SymbolIterator;
+import ghidra.util.Msg;
 import ghidra.util.layout.PairLayout;
 import ghidra.util.table.GhidraTable;
 
@@ -118,7 +120,10 @@ class NamespacePanel extends JPanel {
 		JLabel longestLabel = new JLabel(longest); 
 		int width = longestLabel.getPreferredSize().width; 
 		while(it.hasNext()) {
+			
 			Namespace ns = it.next();
+			AddressSetView ar = ns.getBody();
+			Msg.info(this, "Add: " + ns.getName() + " " + ar.getMinAddress().toString() + " " + ar.getMaxAddress().toString()); 
 			SymbolIterator symIter = this.program.getSymbolTable().getSymbols(ns);
 			SymbolTableModel model = new SymbolTableModel(this.program, this.symProvider, this.tool, symIter, ns);
 
