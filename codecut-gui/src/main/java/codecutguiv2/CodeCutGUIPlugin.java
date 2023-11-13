@@ -41,6 +41,7 @@ import java.awt.event.KeyEvent;
 import java.io.*;
 
 import javax.swing.ImageIcon;
+import javax.swing.Icon;
 
 import docking.ActionContext;
 import docking.action.*;
@@ -526,7 +527,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 				return symProvider.getCurrentSymbol() != null;
 			}
 		};
-		ImageIcon icon = ResourceManager.loadImage("images/table_go.png");
+		Icon icon = ResourceManager.loadImage("images/table_go.png");
 		openRefsAction.setPopupMenuData(
 			new MenuData(new String[] { "Symbol References" }, icon, popupGroup));
 		openRefsAction.setToolBarData(new ToolBarData(icon));
@@ -752,7 +753,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 	}
 	
 	private void createExportActions() {
-		
+//Need Decompiler extensions		
 		/*
 		DockingAction exportDwarf = 
 				new DockingAction("export_dwarf", this.getName()) {
@@ -794,12 +795,35 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 			
 		};
 		
-		MenuData menuData = new MenuData(new String[] {"Export", "Export to C" }, null, "Export");
+		MenuData menuData = new MenuData(new String[] {"Export", "Select range to export to recomp. C (EXPERIMENTAL)" }, null, "Export");
 		menuData.setMenuSubGroup("1");
 		exportC.setPopupMenuData(menuData);
 		//exportC.setAddToAllWindows(true);
 		tool.addLocalAction(symProvider, exportC);
 		
+		DockingAction exportCModule = 
+				new DockingAction("export_c_mod", this.getName()) {
+			@Override 
+			public boolean isEnabledForContext(ActionContext context) {
+				return symProvider.getCurrentSymbol() != null;
+			}
+			@Override
+			public void actionPerformed(ActionContext context) {
+				AddressRange theRange = CodecutUtils.getNamespaceRange(getProgram(), getSymbolProvider().getCurrentSymbol());
+				exportC(theRange.getMinAddress().toString(), theRange.getMaxAddress().toString());
+			}
+			
+		};
+		
+		menuData = new MenuData(new String[] {"Export", "Export module to recomp. C (EXPERIMENTAL)" }, null, "Export");
+		menuData.setMenuSubGroup("1");
+		exportCModule.setPopupMenuData(menuData);
+		//exportC.setAddToAllWindows(true);
+		tool.addLocalAction(symProvider, exportCModule);
+
+//Need to get obj file output script to work without the parent ELF
+//Could check and only enable this if the loaded file was an ARM ELF
+/*
 		DockingAction exportElf = 
 				new DockingAction("export_elf", this.getName()) {
 			@Override 
@@ -808,7 +832,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 			}
 			@Override
 			public void actionPerformed(ActionContext programContext) {
-				Namespace ns = symProvider.getCurrentSymbol().getParentNamespace(); // for o output
+				Namespace ns = symProvider.getCurrentSymbol().getParentNamespace(); // for .o output
 				Msg.info(new Object(), ns.getName());
 				GhidraState gstate = new GhidraState(tool, tool.getProject(), currentProgram, null, null, null);
 				OFileExporter outputELF = new OFileExporter(gstate, ns.getName());
@@ -822,12 +846,13 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 			
 		};
 		
-		menuData = new MenuData(new String[] {"Export", "Export to ELF" }, null, "Export");
+		menuData = new MenuData(new String[] {"Export", "Export to ELF (EXPERIMENTAL)" }, null, "Export");
 		menuData.setMenuSubGroup("1");
 		exportElf.setPopupMenuData(menuData);
 		//exportElf.setAddToAllWindows(true);
 		tool.addLocalAction(symProvider, exportElf);
-		
+*/
+//Need Decompiler Extensions
 /*
 		DockingAction updateMapping = new DockingAction("Update Decompiler Mapping", getName()) {
 			@Override 
@@ -1033,7 +1058,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 						stringInstance.getComponentPath(), null, 0, 0, 0);
 				
 				accumulator.add(pl);
-				monitor.checkCanceled();
+				//monitor.checkCanceled();
 				monitor.incrementProgress(1);
 			}
 			
@@ -1181,7 +1206,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 	
 	private File loadMapFile() {
 		GhidraFileChooser fileChooser = new GhidraFileChooser(this.symProvider.getComponent());
-		String dir = Preferences.getProperty(Preferences.LAST_IMPORT_DIRECTORY);
+		String dir = Preferences.getProperty(Preferences.LAST_TOOL_IMPORT_DIRECTORY );
 		if (dir != null) {
 			File file = new File(dir);
 			fileChooser.setCurrentDirectory(file);
@@ -1194,7 +1219,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		if (file != null) {
 			File parent = file.getParentFile();
 			if (parent != null) {
-				Preferences.setProperty(Preferences.LAST_IMPORT_DIRECTORY, parent.getAbsolutePath());
+				Preferences.setProperty(Preferences.LAST_TOOL_IMPORT_DIRECTORY, parent.getAbsolutePath());
 			}
 			if (!file.getName().endsWith(".map")) {
 				Msg.showInfo(this,  this.symProvider.getComponent(), 
@@ -1209,7 +1234,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 	
 	protected File getMapFile() {
 		GhidraFileChooser fileChooser = new GhidraFileChooser(this.symProvider.getComponent());
-		String dir = Preferences.getProperty(Preferences.LAST_EXPORT_DIRECTORY);
+		String dir = Preferences.getProperty(Preferences.LAST_TOOL_EXPORT_DIRECTORY);
 		if (dir != null) {
 			File file = new File(dir);
 			fileChooser.setCurrentDirectory(file);
@@ -1222,7 +1247,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		if (file != null) {
 			File parent = file.getParentFile();
 			if (parent != null) {
-				Preferences.setProperty(Preferences.LAST_EXPORT_DIRECTORY, parent.getAbsolutePath());
+				Preferences.setProperty(Preferences.LAST_TOOL_EXPORT_DIRECTORY, parent.getAbsolutePath());
 			}
 			String name = file.getName();
 			if (!file.getName().endsWith(".map")) {
@@ -1282,7 +1307,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 	
 	protected File getCFile() {
 		GhidraFileChooser fileChooser = new GhidraFileChooser(this.symProvider.getComponent());
-		String dir = Preferences.getProperty(Preferences.LAST_EXPORT_DIRECTORY);
+		String dir = Preferences.getProperty(Preferences.LAST_TOOL_EXPORT_DIRECTORY);
 		if (dir != null) {
 			File file = new File(dir);
 			fileChooser.setCurrentDirectory(file);
@@ -1295,7 +1320,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		if (file != null) {
 			File parent = file.getParentFile();
 			if (parent != null) {
-				Preferences.setProperty(Preferences.LAST_EXPORT_DIRECTORY, parent.getAbsolutePath());
+				Preferences.setProperty(Preferences.LAST_TOOL_EXPORT_DIRECTORY, parent.getAbsolutePath());
 			}
 			String name = file.getName();
 			if (!file.getName().endsWith(".c")) {

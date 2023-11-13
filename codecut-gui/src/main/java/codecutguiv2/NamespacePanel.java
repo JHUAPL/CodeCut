@@ -97,10 +97,10 @@ class NamespacePanel extends JPanel {
 			nsList.sort(new Comparator<Namespace>() {
 				@Override 
 				public int compare(Namespace ns1, Namespace ns2) {
-					Address ns1MaxAddress = ns1.getBody().getMaxAddress();
-					Address ns2MaxAddress = ns2.getBody().getMaxAddress();
-					if (ns1MaxAddress != null && ns2MaxAddress != null) {
-						if (ns1MaxAddress.getAddressableWordOffset() < ns2MaxAddress.getAddressableWordOffset()) {
+					Address ns1MinAddress = ns1.getBody().getMinAddress();
+					Address ns2MinAddress = ns2.getBody().getMinAddress();
+					if (ns1MinAddress != null && ns2MinAddress != null) {
+						if (ns1MinAddress.getAddressableWordOffset() < ns2MinAddress.getAddressableWordOffset()) {
 							return -1;
 						}
 					}

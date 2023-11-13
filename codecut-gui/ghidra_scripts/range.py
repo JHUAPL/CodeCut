@@ -1,44 +1,36 @@
-#@category AMP
+#@category AMP-Improved
+from generate_c import generate_recompilable_c_code
+import os
+from ghidra.util.task import TaskMonitor
 
-from std import *
 
-# -------------------------------------------------------------
-# Decompile all functions within a range of specified addresses
-# -------------------------------------------------------------
-# Definitions for decompiler to function
-program = getCurrentProgram()
-ifc = DecompInterface()
-ifc.setOptions(DecompileOptions())
-ifc.openProgram(program)
+def write_c_code_to_file(c_code, output_file_path):
+    with open(output_file_path, 'w') as f:
+        f.write(c_code)
 
-inRangeFunc = []
-externFunc  = []
-  
-# Take user input for address range
-args = getScriptArgs()
-start_addr = args[0]
-end_addr = args[1]
 
-file  = args[2]
-path = file.rsplit("/", 1)[0] + "/"
+if __name__ == '__main__':
 
-start = int(start_addr, 16)
-end = int(end_addr, 16)
+    args = getScriptArgs()
+    start_addr = args[0]
+    end_addr = args[1]
 
-def main():
-    # Get functions in range of specified addr
-    # store functions in range -> inRangeFunc
-    # store called functions from in range functions -> externFunc
-    getFunctionsInRange(start, end, externFunc, inRangeFunc)
-    
-    # Decompile in range functions and write to file
-    writeToFile(file, externFunc, inRangeFunc)
-    
-    # Produce "ghidra.h" file
-    writeHeader(path)
+    file_name  = args[2]
+    output_dir = file_name.rsplit("/", 1)[0] + "/"
 
-    # Fix ghidra decompiler access notation
-    fixCasting(file)
+    println("Recomp C Range Entry: %s - %s" % (start_addr, end_addr))
+    c_code = generate_recompilable_c_code(start_addr, end_addr,
+            currentProgram, monitor)
 
-if __name__ == "__main__":
-     main()
+    #file_name = currentProgram.getName()
+
+    #output_dir = askDirectory('Output Directory',
+    #                          'Save C code output'
+    #                          ).getPath()
+
+    #output_file_path = os.path.join(output_dir, file_name)
+
+    write_c_code_to_file(c_code, file_name)
+
+    println('C code has been saved to %s' % file_name)
+
