@@ -79,10 +79,12 @@ class CombineProvider extends ComponentProviderAdapter implements ActionListener
 	private Namespace firstNamespace;
 	private Namespace secondNamespace;
 	private Namespace combinedNamespace; 
+	private SymbolProvider symProvider;
 
 	CombineProvider(CodeCutGUIPlugin plugin) {
 		super(plugin.getTool(), "Combine Namespaces", plugin.getName(), ProgramActionContext.class);
 		this.plugin = plugin;
+		symProvider = plugin.getSymbolProvider();
 
 		setIcon(ICON);
 		addToToolbar();
@@ -241,12 +243,12 @@ class CombineProvider extends ComponentProviderAdapter implements ActionListener
 						
 					}
 				}
-
 			}
 		}
 		
 		this.closeComponent();
 		
+		symProvider.reload();
 
 
 	}

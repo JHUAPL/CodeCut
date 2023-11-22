@@ -123,7 +123,12 @@ class NamespacePanel extends JPanel {
 			
 			Namespace ns = it.next();
 			AddressSetView ar = ns.getBody();
-			Msg.info(this, "Add: " + ns.getName() + " " + ar.getMinAddress().toString() + " " + ar.getMaxAddress().toString()); 
+			if ((ar.getMinAddress() != null) && (ar.getMaxAddress() != null)) {
+				Msg.info(this, "Add: " + ns.getName() + " " + ar.getMinAddress().toString() + " " + ar.getMaxAddress().toString());
+			}
+			else {
+				Msg.info(this,  "Add: " + ns.getName() + " null min or max??");
+			}
 			SymbolIterator symIter = this.program.getSymbolTable().getSymbols(ns);
 			SymbolTableModel model = new SymbolTableModel(this.program, this.symProvider, this.tool, symIter, ns);
 

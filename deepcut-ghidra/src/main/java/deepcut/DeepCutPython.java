@@ -57,7 +57,7 @@ public class DeepCutPython {
 		
 		process = runtime.exec(exec);
 
-		// Yes this is confusing. stdin is a Java OutputStream, stdin is an InputStream
+		// Yes this is confusing. stdin is a Java OutputStream, stdout is an InputStream
 		stdin = process.getOutputStream();
 		stdout = process.getInputStream();
 		stderr = process.getErrorStream();		

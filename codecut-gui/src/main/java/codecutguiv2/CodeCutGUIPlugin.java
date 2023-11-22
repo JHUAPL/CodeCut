@@ -121,8 +121,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 	final static Cursor NORM_CURSOR = new Cursor(Cursor.DEFAULT_CURSOR);
 
 	private final static String OPTION_NAME_PYTHON_EXEC = "Python Executable";
-	private final static String OPTION_DEFAULT_PYTHON_EXEC = "/projects/venv/bin/python3";
-	//private final static String OPTION_DEFAULT_PYTHON_EXEC = "/usr/local/bin/python3"; // for testing
+	private final static String OPTION_DEFAULT_PYTHON_EXEC = "/usr/bin/python3";
 	private String pythonExec = OPTION_DEFAULT_PYTHON_EXEC;
 	
 	private DockingAction openRefsAction;

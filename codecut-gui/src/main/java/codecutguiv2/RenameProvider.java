@@ -73,10 +73,12 @@ class RenameProvider extends ComponentProviderAdapter implements ActionListener 
 	private JButton button;
 
 	private Namespace namespace;
+	private SymbolProvider symProvider;
 
 	RenameProvider(CodeCutGUIPlugin plugin) {
 		super(plugin.getTool(), "Rename Namespace", plugin.getName(), ProgramActionContext.class);
 		this.plugin = plugin;
+		symProvider = plugin.getSymbolProvider();
 
 		setIcon(ICON);
 		addToToolbar();
@@ -172,6 +174,7 @@ class RenameProvider extends ComponentProviderAdapter implements ActionListener 
 						this.closeComponent(); 
 					}
 				}
+				symProvider.reload();
 			}
 				
 		}

@@ -73,10 +73,13 @@ class CreateProvider extends ComponentProviderAdapter implements ActionListener 
 
 	private Namespace namespace;
 	private Symbol symbol;
+	private SymbolProvider symProvider;
 
 	CreateProvider(CodeCutGUIPlugin plugin) {
 		super(plugin.getTool(), "Create Namespace", plugin.getName(), ProgramActionContext.class);
 		this.plugin = plugin;
+		
+		symProvider = plugin.getSymbolProvider();
 
 		setIcon(ICON);
 		addToToolbar();
@@ -141,9 +144,10 @@ class CreateProvider extends ComponentProviderAdapter implements ActionListener 
 						Msg.info(this, "Exception when attempting to change namespace of symbol " 
 								+ this.symbol.getName() + " to " + nS.getName());
 					}
-					
+				
 					this.closeComponent(); 
 
+					symProvider.reload();
 				}
 			}
 				

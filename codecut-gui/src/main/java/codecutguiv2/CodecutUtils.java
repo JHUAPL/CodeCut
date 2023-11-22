@@ -186,8 +186,11 @@ public class CodecutUtils {
 			SymbolType type = symbol.getSymbolType();
 			if (type == SymbolType.FUNCTION) {
 				Namespace ns = ((Function)symbol.getObject()).getParentNamespace();
-				if (!namespaceList.contains(ns)) {
-					namespaceList.add(ns);
+				//make sure it's a "real" namespace with a body - otherwise we can't work with it
+				if ((ns.getBody().getMinAddress() != null) && (ns.getBody().getMaxAddress() != null)) {
+					if (!namespaceList.contains(ns)) {
+						namespaceList.add(ns);
+					}
 				}
 			}
 		}

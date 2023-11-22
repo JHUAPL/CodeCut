@@ -56,7 +56,7 @@ public class DeepCutAnalyzer extends AbstractAnalyzer {
 	
 	private final static String OPTION_NAME_PYTHON_EXEC = "Python Executable";
 	private final static String OPTION_DESCRIPTION_PYTHON_EXEC = "";
-	private final static String OPTION_DEFAULT_PYTHON_EXEC = "/projects/venv/bin/python3";
+	private final static String OPTION_DEFAULT_PYTHON_EXEC = "/usr/bin/python3";
 	private String pythonExec = OPTION_DEFAULT_PYTHON_EXEC;
 
 	public DeepCutAnalyzer() {
