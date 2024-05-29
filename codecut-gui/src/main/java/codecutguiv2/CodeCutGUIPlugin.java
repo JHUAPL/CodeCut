@@ -48,6 +48,7 @@ import docking.action.*;
 import docking.tool.ToolConstants;
 import docking.widgets.OptionDialog;
 import docking.widgets.filechooser.GhidraFileChooser;
+import functioncalls.plugin.FcgProvider;
 import ghidra.app.CorePluginPackage;
 import ghidra.app.context.ProgramActionContext;
 import ghidra.app.context.ProgramContextAction;
@@ -94,6 +95,8 @@ import ghidra.util.task.*;
 import ghidra.util.datastruct.*;
 import resources.Icons;
 import resources.ResourceManager;
+import static ghidra.program.util.ProgramEvent.*;
+
 
 /**
  * Plugin to display the symbol table for a program.
@@ -311,7 +314,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		for (int i = 0; i < eventCnt; ++i) {
 			DomainObjectChangeRecord doRecord = ev.getChangeRecord(i);
 
-			int eventType = doRecord.getEventType();
+			int eventType = doRecord.getEventType().getId();
 			if (!(doRecord instanceof ProgramChangeRecord)) {
 				continue;
 			}
@@ -319,105 +322,104 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 			ProgramChangeRecord rec = (ProgramChangeRecord) doRecord;
 			Symbol symbol = null;
 			SymbolTable symbolTable = currentProgram.getSymbolTable();
-			switch (eventType) {
-				case ChangeManager.DOCR_CODE_ADDED:
-				case ChangeManager.DOCR_CODE_REMOVED:
-					if (rec.getNewValue() instanceof Data) {
-						symbol = symbolTable.getPrimarySymbol(rec.getStart());
-						if (symbol != null && symbol.isDynamic()) {
-							symProvider.symbolChanged(symbol);
-							refProvider.symbolChanged(symbol);
-						}
-					}
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_ADDED:
-					Address addAddr = rec.getStart();
-					Symbol primaryAtAdd = symbolTable.getPrimarySymbol(addAddr);
-					if (primaryAtAdd != null && primaryAtAdd.isDynamic()) {
-						symProvider.symbolRemoved(primaryAtAdd);
-					}
-					symbol = (Symbol) rec.getNewValue();
-					symProvider.symbolAdded(symbol);
-					refProvider.symbolAdded(symbol);
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_REMOVED:
-					Address removeAddr = rec.getStart();
-					Long symbolID = (Long) rec.getNewValue();
-					Symbol removedSymbol = new SymbolPlaceholder(symbolID, removeAddr, getProgram());
-					symProvider.symbolRemoved(removedSymbol);
-					refProvider.symbolRemoved(removedSymbol);
-					Symbol primaryAtRemove = symbolTable.getPrimarySymbol(removeAddr);
-					if (primaryAtRemove != null && primaryAtRemove.isDynamic()) {
-						symProvider.symbolAdded(primaryAtRemove);
-						refProvider.symbolRemoved(primaryAtRemove);
-					}
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_RENAMED:
-				case ChangeManager.DOCR_SYMBOL_SCOPE_CHANGED:
-				case ChangeManager.DOCR_SYMBOL_DATA_CHANGED:
-					symbol = (Symbol) rec.getObject();
-					if (!CodecutUtils.nsUpdating()) {
-						if (!symbol.isDeleted()) {
-							symProvider.symbolChanged(symbol);
-							refProvider.symbolChanged(symbol);
-						}
-					}
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_SOURCE_CHANGED:
-					symbol = (Symbol) rec.getObject();
-					symProvider.symbolChanged(symbol);
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_SET_AS_PRIMARY:
-					symbol = (Symbol) rec.getNewValue();
-					symProvider.symbolChanged(symbol);
-					Symbol oldSymbol = (Symbol) rec.getOldValue();
-					if (oldSymbol != null) {
-						symProvider.symbolChanged(oldSymbol);
-					}
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_ASSOCIATION_ADDED:
-				case ChangeManager.DOCR_SYMBOL_ASSOCIATION_REMOVED:
-					break;
-				case ChangeManager.DOCR_MEM_REFERENCE_ADDED:
-					Reference ref = (Reference) rec.getObject();
-					symbol = symbolTable.getSymbol(ref);
-					if (symbol != null) {
+			
+			if(eventType == CODE_ADDED.getId() || eventType == CODE_REMOVED.getId()) {
+				if (rec.getNewValue() instanceof Data) {
+					symbol = symbolTable.getPrimarySymbol(rec.getStart());
+					if (symbol != null && symbol.isDynamic()) {
 						symProvider.symbolChanged(symbol);
 						refProvider.symbolChanged(symbol);
 					}
-					break;
-				case ChangeManager.DOCR_MEM_REFERENCE_REMOVED:
-					ref = (Reference) rec.getObject();
-					Address toAddr = ref.getToAddress();
-					if (toAddr.isMemoryAddress()) {
-						symbol = symbolTable.getSymbol(ref);
-						if (symbol == null) {
-
-							long id = symbolTable.getDynamicSymbolID(ref.getToAddress());
-							removedSymbol = new SymbolPlaceholder(id, toAddr, getProgram());
-							symProvider.symbolRemoved(removedSymbol);
-						}
-						else {
-							refProvider.symbolChanged(symbol);
-						}
-					}
-					break;
-
-				case ChangeManager.DOCR_EXTERNAL_ENTRY_POINT_ADDED:
-				case ChangeManager.DOCR_EXTERNAL_ENTRY_POINT_REMOVED:
-					Symbol[] symbols = symbolTable.getSymbols(rec.getStart());
-					for (Symbol element : symbols) {
-						symProvider.symbolChanged(element);
-						refProvider.symbolChanged(element);
-					}
-					break;
+				}
 			}
+			
+			else if(eventType == SYMBOL_ADDED.getId()) {
+				Address addAddr = rec.getStart();
+				Symbol primaryAtAdd = symbolTable.getPrimarySymbol(addAddr);
+				if (primaryAtAdd != null && primaryAtAdd.isDynamic()) {
+					symProvider.symbolRemoved(primaryAtAdd);
+				}
+				symbol = (Symbol) rec.getNewValue();
+				symProvider.symbolAdded(symbol);
+				refProvider.symbolAdded(symbol);
+			}
+			
+			else if(eventType == SYMBOL_REMOVED.getId()) {
+				Address removeAddr = rec.getStart();
+				Long symbolID = (Long) rec.getNewValue();
+				Symbol removedSymbol;
+				removedSymbol = new SymbolPlaceholder(symbolID, removeAddr, getProgram());
+				symProvider.symbolRemoved(removedSymbol);
+				refProvider.symbolRemoved(removedSymbol);
+				Symbol primaryAtRemove = symbolTable.getPrimarySymbol(removeAddr);
+				if (primaryAtRemove != null && primaryAtRemove.isDynamic()) {
+					symProvider.symbolAdded(primaryAtRemove);
+					refProvider.symbolRemoved(primaryAtRemove);
+				}
+			}
+			
+			else if((eventType == SYMBOL_RENAMED.getId())
+						|| (eventType == SYMBOL_SCOPE_CHANGED.getId())
+						|| (eventType == SYMBOL_DATA_CHANGED.getId())) {
+				
+				symbol = (Symbol) rec.getObject();
+				if (!CodecutUtils.nsUpdating()) {
+					if (!symbol.isDeleted()) {
+						symProvider.symbolChanged(symbol);
+						refProvider.symbolChanged(symbol);
+					}
+				}
+			}
+			
+			else if(eventType == SYMBOL_SOURCE_CHANGED.getId()) {
+				symbol = (Symbol) rec.getObject();
+				symProvider.symbolChanged(symbol);
+			}
+			
+			else if(eventType == SYMBOL_PRIMARY_STATE_CHANGED.getId()) {
+				symbol = (Symbol) rec.getNewValue();
+				symProvider.symbolChanged(symbol);
+				Symbol oldSymbol = (Symbol) rec.getOldValue();
+				if (oldSymbol != null) {
+					symProvider.symbolChanged(oldSymbol);
+				}
+			}
+			
+			else if(eventType == REFERENCE_ADDED.getId()) {
+				Reference ref = (Reference) rec.getObject();
+				symbol = symbolTable.getSymbol(ref);
+				if (symbol != null) {
+					symProvider.symbolChanged(symbol);
+					refProvider.symbolChanged(symbol);
+				}
+			}
+			
+			else if(eventType == REFERENCE_REMOVED.getId()) {
+				Reference ref = (Reference) rec.getObject();
+				Address toAddr = ref.getToAddress();
+				if (toAddr.isMemoryAddress()) {
+					symbol = symbolTable.getSymbol(ref);
+					if (symbol == null) {
+						
+						Symbol removedSymbol;
+						long id = symbolTable.getDynamicSymbolID(ref.getToAddress());
+						removedSymbol = new SymbolPlaceholder(id, toAddr, getProgram());
+						symProvider.symbolRemoved(removedSymbol);
+					}
+					else {
+						refProvider.symbolChanged(symbol);
+					}
+				}
+			}
+			
+			else if(eventType == EXTERNAL_ENTRY_ADDED.getId() || eventType == EXTERNAL_ENTRY_REMOVED.getId()) {
+				Symbol[] symbols = symbolTable.getSymbols(rec.getStart());
+				for (Symbol element : symbols) {
+					symProvider.symbolChanged(element);
+					refProvider.symbolChanged(element);
+				}
+			}
+			
 		}
 		
 	}
@@ -749,6 +751,8 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		moduleNameGuessingAction.setHelpLocation(new HelpLocation("Map", moduleNameGuessingAction.getName()));
 		moduleNameGuessingAction.setAddToAllWindows(true);
 		tool.addAction(moduleNameGuessingAction);
+		
+		
 	}
 	
 	private void createExportActions() {
@@ -891,7 +895,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 
 	}
 
-	
+
 	private void guessModuleNames() {
 		Task guessNamesTask = new Task("Guess Module Names", true, true, true) {
 			@Override 
