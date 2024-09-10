@@ -27,6 +27,7 @@
  * under Contract Number N66001-20-C-4024.
 */
 
+
 package codecutguiv2;
 
 import java.awt.Cursor;
@@ -48,6 +49,7 @@ import docking.action.*;
 import docking.tool.ToolConstants;
 import docking.widgets.OptionDialog;
 import docking.widgets.filechooser.GhidraFileChooser;
+import functioncalls.plugin.FcgProvider;
 import ghidra.app.CorePluginPackage;
 import ghidra.app.context.ProgramActionContext;
 import ghidra.app.context.ProgramContextAction;
@@ -55,6 +57,7 @@ import ghidra.app.decompiler.component.DecompilerController;
 import ghidra.app.events.ProgramActivatedPluginEvent;
 import ghidra.app.events.ProgramLocationPluginEvent;
 import ghidra.app.plugin.PluginCategoryNames;
+import ghidra.app.plugin.ProgramPlugin;
 import ghidra.app.plugin.core.decompile.DecompilerProvider;
 import ghidra.app.plugin.core.symboltree.actions.*;
 import ghidra.app.script.GhidraScript;
@@ -64,11 +67,14 @@ import ghidra.app.services.GoToService;
 //import ghidra.app.services.DecExtendService;
 import ghidra.app.util.SymbolInspector;
 import ghidra.framework.model.*;
+import ghidra.framework.options.Options;
+import ghidra.framework.options.OptionsChangeListener;
 import ghidra.framework.options.SaveState;
 import ghidra.framework.options.ToolOptions;
 import ghidra.framework.plugintool.*;
 import ghidra.framework.plugintool.util.PluginStatus;
 import ghidra.framework.preferences.Preferences;
+import ghidra.graph.viewer.options.VisualGraphOptions;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressRange;
 import ghidra.program.model.address.AddressRangeImpl;
@@ -87,13 +93,18 @@ import ghidra.util.HTMLUtilities;
 import ghidra.util.HelpLocation;
 import ghidra.util.Msg;
 import ghidra.util.Swing;
+import ghidra.util.SystemUtilities;
+import ghidra.util.bean.opteditor.OptionsVetoException;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.table.GhidraTable;
 import ghidra.util.task.SwingUpdateManager;
+import graphcut.*;
 import ghidra.util.task.*;
 import ghidra.util.datastruct.*;
 import resources.Icons;
 import resources.ResourceManager;
+import static ghidra.program.util.ProgramEvent.*;
+
 
 /**
  * Plugin to display the symbol table for a program.
@@ -109,13 +120,14 @@ import resources.ResourceManager;
 			" provides navigation to the symbols in the Code Browser, and " +
 			"allows symbols to be renamed and deleted. This plugin also " +
 			"shows references to a symbol. Filters can be set " +
-			"to show subsets of the symbols.",
+			"to show subsets of the symbols." +
+			" Allows the graphing of namespaces and their relations.",
 	servicesRequired = { GoToService.class, BlockModelService.class },
 	eventsProduced = { ProgramLocationPluginEvent.class },
 	eventsConsumed = { ProgramActivatedPluginEvent.class }
 )
 //@formatter:on
-public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
+public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListener, OptionsChangeListener{
 
 	final static Cursor WAIT_CURSOR = new Cursor(Cursor.WAIT_CURSOR);
 	final static Cursor NORM_CURSOR = new Cursor(Cursor.DEFAULT_CURSOR);
@@ -151,6 +163,20 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 	private Map<Namespace, String> suggestedModuleNames;
 	//private DecExtendService decExtService; 
 	
+	//GraphCut Variables
+	public static final String GRAPH_NAME = "CodeCut Object Graph";
+	static final String SHOW_PROVIDER_ACTION_NAME = "Display CodeCut Object Graph";
+	public static final HelpLocation DEFAULT_HELP = 
+			new HelpLocation(CodeCutGUIPlugin.class.getSimpleName(),
+					CodeCutGUIPlugin.class.getSimpleName());
+	private GraphCutProvider graphProvider;
+	private VisualGraphOptions vgOptions = new VisualGraphOptions();
+	private static final int MIN_UPDATE_DELAY = 750;
+	private SwingUpdateManager locationUpdater = new SwingUpdateManager(MIN_UPDATE_DELAY, () ->{
+		doLocationChanged();
+	});
+	private ChecklistProvider checklistProvider;
+	
 	public CodeCutGUIPlugin(PluginTool tool) {
 		super(tool);
 
@@ -177,21 +203,29 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		createProvider = new CreateProvider(this);
 		combineProvider = new CombineProvider(this);
 		decompProvider = new DecompileRangeProvider(this);
-
+		graphProvider = new GraphCutProvider(tool, this);
+		checklistProvider = new ChecklistProvider(this);
+		
 		createNamespaceActions();
 		createSymActions();
 		createRefActions();
 		createMapActions();
 		createExportActions(); 
-
+		createGraphActions();
+		initializeGraphOptions();
+		createChecklistActions();
+		
 		//decExtService = tool.getService(DecExtendService.class);
 		//if (decExtService == null) {
 		//	Msg.info(new Object(),  "ERROR: Decompiler Extension is not installed");
 		//}
-
+		
 		inspector = new SymbolInspector(getTool(), symProvider.getComponent());
 	}
 
+	
+	
+	
 	/**
 	 * Tells a plugin that it is no longer needed.
 	 * The plugin should remove itself from anything that
@@ -247,20 +281,27 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 			suggestedModuleNames.clear();
 			suggestedModuleNames = null;
 		}
+		
+		graphProvider.dispose();
+		checklistProvider.dispose();
+		
 	}
 
 	@Override
 	public void readConfigState(SaveState saveState) {
 		symProvider.readConfigState(saveState);
+		graphProvider.readConfigState(saveState);
 	}
 
 	@Override
 	public void writeConfigState(SaveState saveState) {
 		symProvider.writeConfigState(saveState);
+		graphProvider.writeConfigState(saveState);
 	}
 
 	@Override
 	public void processEvent(PluginEvent event) {
+		super.processEvent(event);
 		if (event instanceof ProgramActivatedPluginEvent) {
 			ProgramActivatedPluginEvent progEvent = (ProgramActivatedPluginEvent) event;
 			Program oldProg = currentProgram;
@@ -311,7 +352,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		for (int i = 0; i < eventCnt; ++i) {
 			DomainObjectChangeRecord doRecord = ev.getChangeRecord(i);
 
-			int eventType = doRecord.getEventType();
+			int eventType = doRecord.getEventType().getId();
 			if (!(doRecord instanceof ProgramChangeRecord)) {
 				continue;
 			}
@@ -319,105 +360,104 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 			ProgramChangeRecord rec = (ProgramChangeRecord) doRecord;
 			Symbol symbol = null;
 			SymbolTable symbolTable = currentProgram.getSymbolTable();
-			switch (eventType) {
-				case ChangeManager.DOCR_CODE_ADDED:
-				case ChangeManager.DOCR_CODE_REMOVED:
-					if (rec.getNewValue() instanceof Data) {
-						symbol = symbolTable.getPrimarySymbol(rec.getStart());
-						if (symbol != null && symbol.isDynamic()) {
-							symProvider.symbolChanged(symbol);
-							refProvider.symbolChanged(symbol);
-						}
-					}
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_ADDED:
-					Address addAddr = rec.getStart();
-					Symbol primaryAtAdd = symbolTable.getPrimarySymbol(addAddr);
-					if (primaryAtAdd != null && primaryAtAdd.isDynamic()) {
-						symProvider.symbolRemoved(primaryAtAdd);
-					}
-					symbol = (Symbol) rec.getNewValue();
-					symProvider.symbolAdded(symbol);
-					refProvider.symbolAdded(symbol);
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_REMOVED:
-					Address removeAddr = rec.getStart();
-					Long symbolID = (Long) rec.getNewValue();
-					Symbol removedSymbol = new SymbolPlaceholder(symbolID, removeAddr, getProgram());
-					symProvider.symbolRemoved(removedSymbol);
-					refProvider.symbolRemoved(removedSymbol);
-					Symbol primaryAtRemove = symbolTable.getPrimarySymbol(removeAddr);
-					if (primaryAtRemove != null && primaryAtRemove.isDynamic()) {
-						symProvider.symbolAdded(primaryAtRemove);
-						refProvider.symbolRemoved(primaryAtRemove);
-					}
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_RENAMED:
-				case ChangeManager.DOCR_SYMBOL_SCOPE_CHANGED:
-				case ChangeManager.DOCR_SYMBOL_DATA_CHANGED:
-					symbol = (Symbol) rec.getObject();
-					if (!CodecutUtils.nsUpdating()) {
-						if (!symbol.isDeleted()) {
-							symProvider.symbolChanged(symbol);
-							refProvider.symbolChanged(symbol);
-						}
-					}
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_SOURCE_CHANGED:
-					symbol = (Symbol) rec.getObject();
-					symProvider.symbolChanged(symbol);
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_SET_AS_PRIMARY:
-					symbol = (Symbol) rec.getNewValue();
-					symProvider.symbolChanged(symbol);
-					Symbol oldSymbol = (Symbol) rec.getOldValue();
-					if (oldSymbol != null) {
-						symProvider.symbolChanged(oldSymbol);
-					}
-					break;
-
-				case ChangeManager.DOCR_SYMBOL_ASSOCIATION_ADDED:
-				case ChangeManager.DOCR_SYMBOL_ASSOCIATION_REMOVED:
-					break;
-				case ChangeManager.DOCR_MEM_REFERENCE_ADDED:
-					Reference ref = (Reference) rec.getObject();
-					symbol = symbolTable.getSymbol(ref);
-					if (symbol != null) {
+			
+			if(eventType == CODE_ADDED.getId() || eventType == CODE_REMOVED.getId()) {
+				if (rec.getNewValue() instanceof Data) {
+					symbol = symbolTable.getPrimarySymbol(rec.getStart());
+					if (symbol != null && symbol.isDynamic()) {
 						symProvider.symbolChanged(symbol);
 						refProvider.symbolChanged(symbol);
 					}
-					break;
-				case ChangeManager.DOCR_MEM_REFERENCE_REMOVED:
-					ref = (Reference) rec.getObject();
-					Address toAddr = ref.getToAddress();
-					if (toAddr.isMemoryAddress()) {
-						symbol = symbolTable.getSymbol(ref);
-						if (symbol == null) {
-
-							long id = symbolTable.getDynamicSymbolID(ref.getToAddress());
-							removedSymbol = new SymbolPlaceholder(id, toAddr, getProgram());
-							symProvider.symbolRemoved(removedSymbol);
-						}
-						else {
-							refProvider.symbolChanged(symbol);
-						}
-					}
-					break;
-
-				case ChangeManager.DOCR_EXTERNAL_ENTRY_POINT_ADDED:
-				case ChangeManager.DOCR_EXTERNAL_ENTRY_POINT_REMOVED:
-					Symbol[] symbols = symbolTable.getSymbols(rec.getStart());
-					for (Symbol element : symbols) {
-						symProvider.symbolChanged(element);
-						refProvider.symbolChanged(element);
-					}
-					break;
+				}
 			}
+			
+			else if(eventType == SYMBOL_ADDED.getId()) {
+				Address addAddr = rec.getStart();
+				Symbol primaryAtAdd = symbolTable.getPrimarySymbol(addAddr);
+				if (primaryAtAdd != null && primaryAtAdd.isDynamic()) {
+					symProvider.symbolRemoved(primaryAtAdd);
+				}
+				symbol = (Symbol) rec.getNewValue();
+				symProvider.symbolAdded(symbol);
+				refProvider.symbolAdded(symbol);
+			}
+			
+			else if(eventType == SYMBOL_REMOVED.getId()) {
+				Address removeAddr = rec.getStart();
+				Long symbolID = (Long) rec.getNewValue();
+				Symbol removedSymbol;
+				removedSymbol = new SymbolPlaceholder(symbolID, removeAddr, getProgram());
+				symProvider.symbolRemoved(removedSymbol);
+				refProvider.symbolRemoved(removedSymbol);
+				Symbol primaryAtRemove = symbolTable.getPrimarySymbol(removeAddr);
+				if (primaryAtRemove != null && primaryAtRemove.isDynamic()) {
+					symProvider.symbolAdded(primaryAtRemove);
+					refProvider.symbolRemoved(primaryAtRemove);
+				}
+			}
+			
+			else if((eventType == SYMBOL_RENAMED.getId())
+						|| (eventType == SYMBOL_SCOPE_CHANGED.getId())
+						|| (eventType == SYMBOL_DATA_CHANGED.getId())) {
+				
+				symbol = (Symbol) rec.getObject();
+				if (!CodecutUtils.nsUpdating()) {
+					if (!symbol.isDeleted()) {
+						symProvider.symbolChanged(symbol);
+						refProvider.symbolChanged(symbol);
+					}
+				}
+			}
+			
+			else if(eventType == SYMBOL_SOURCE_CHANGED.getId()) {
+				symbol = (Symbol) rec.getObject();
+				symProvider.symbolChanged(symbol);
+			}
+			
+			else if(eventType == SYMBOL_PRIMARY_STATE_CHANGED.getId()) {
+				symbol = (Symbol) rec.getNewValue();
+				symProvider.symbolChanged(symbol);
+				Symbol oldSymbol = (Symbol) rec.getOldValue();
+				if (oldSymbol != null) {
+					symProvider.symbolChanged(oldSymbol);
+				}
+			}
+			
+			else if(eventType == REFERENCE_ADDED.getId()) {
+				Reference ref = (Reference) rec.getObject();
+				symbol = symbolTable.getSymbol(ref);
+				if (symbol != null) {
+					symProvider.symbolChanged(symbol);
+					refProvider.symbolChanged(symbol);
+				}
+			}
+			
+			else if(eventType == REFERENCE_REMOVED.getId()) {
+				Reference ref = (Reference) rec.getObject();
+				Address toAddr = ref.getToAddress();
+				if (toAddr.isMemoryAddress()) {
+					symbol = symbolTable.getSymbol(ref);
+					if (symbol == null) {
+						
+						Symbol removedSymbol;
+						long id = symbolTable.getDynamicSymbolID(ref.getToAddress());
+						removedSymbol = new SymbolPlaceholder(id, toAddr, getProgram());
+						symProvider.symbolRemoved(removedSymbol);
+					}
+					else {
+						refProvider.symbolChanged(symbol);
+					}
+				}
+			}
+			
+			else if(eventType == EXTERNAL_ENTRY_ADDED.getId() || eventType == EXTERNAL_ENTRY_REMOVED.getId()) {
+				Symbol[] symbols = symbolTable.getSymbols(rec.getStart());
+				for (Symbol element : symbols) {
+					symProvider.symbolChanged(element);
+					refProvider.symbolChanged(element);
+				}
+			}
+			
 		}
 		
 	}
@@ -436,6 +476,10 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 
 	SymbolProvider getSymbolProvider() {
 		return symProvider;
+	}
+	
+	GraphCutProvider getGraphProvider() {
+		return graphProvider;
 	}
 
 	ReferenceProvider getReferenceProvider() {
@@ -749,6 +793,8 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		moduleNameGuessingAction.setHelpLocation(new HelpLocation("Map", moduleNameGuessingAction.getName()));
 		moduleNameGuessingAction.setAddToAllWindows(true);
 		tool.addAction(moduleNameGuessingAction);
+		
+		
 	}
 	
 	private void createExportActions() {
@@ -891,7 +937,7 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 
 	}
 
-	
+
 	private void guessModuleNames() {
 		Task guessNamesTask = new Task("Guess Module Names", true, true, true) {
 			@Override 
@@ -1411,4 +1457,131 @@ public class CodeCutGUIPlugin extends Plugin implements DomainObjectListener {
 		}
 		
 	}
+	
+		private void createGraphActions() {
+			DockingAction showProviderAction = new DockingAction(SHOW_PROVIDER_ACTION_NAME, getName(), true) {
+				@Override
+				public void actionPerformed(ActionContext context) {
+					graphProvider.setVisible(true);
+				}
+			};
+			tool.addAction(showProviderAction);
+			
+			DockingAction addToGraphAction = new DockingAction("Add Namespace to Graph", getName(), KeyBindingType.SHARED) {
+				@Override 
+				public void actionPerformed(ActionContext context) {
+					graphProvider.addToWhitelist(symProvider.getCurrentSymbol().getParentNamespace());
+					checklistProvider.buildTable();
+				}
+				
+				@Override 
+				public boolean isEnabledForContext(ActionContext context) {
+					return symProvider.getCurrentSymbol() != null;
+				}
+			};
+			addToGraphAction.setPopupMenuData(
+					new MenuData(new String[] { "Add Namespace to Graph" }, "0"));
+			addToGraphAction.setDescription("Add this Namespace to the CodeCut Graph");
+			tool.addLocalAction(symProvider, addToGraphAction);
+			
+			DockingAction displayCodeCutGraphAction = 
+					new DockingAction("Display_CodeCut_Graph", this.getName()) {
+				@Override
+				public boolean isEnabledForContext(ActionContext context) {
+					return symProvider.getCurrentSymbol() != null;
+				}
+				
+				@Override
+				public void actionPerformed(ActionContext context) {
+					graphProvider.setVisible(true);
+				}
+			};
+			MenuData graphModule = new MenuData(new String[] {ToolConstants.MENU_GRAPH, "Display CodeCut Object Graph"}, null, "Display CodeCut Object Graph");
+			graphModule.setMenuSubGroup("1");
+			displayCodeCutGraphAction.setMenuBarData(graphModule);
+			displayCodeCutGraphAction.setHelpLocation(null);
+			displayCodeCutGraphAction.setAddToAllWindows(true);
+			tool.addAction(displayCodeCutGraphAction);
+			
+		}
+		
+		void showProvider() {
+			graphProvider.setVisible(true);
+		}
+		
+		public Address getCurrentAddress() {
+			if (currentLocation == null) {
+				return null;
+			}
+			return currentLocation.getAddress();
+		}
+		
+		public VisualGraphOptions getOptions() {
+			return vgOptions;
+		}
+		
+		public ProgramLocation getCurrentLocation() {
+			return currentLocation;
+		}
+		
+		private void initializeGraphOptions() {
+			ToolOptions options = tool.getOptions(ToolConstants.GRAPH_OPTIONS);
+			options.addOptionsChangeListener(this);
+			
+			HelpLocation help = new HelpLocation(getName(), "Options");
+			
+			Options graphOptions = options.getOptions(GRAPH_NAME);
+			vgOptions.registerOptions(graphOptions, help);
+			vgOptions.loadOptions(graphOptions);
+			graphProvider.optionsChanged();
+		}
+		
+		@Override
+		public void optionsChanged(ToolOptions options, String optionName, Object oldValue, Object newValue) throws OptionsVetoException {
+			
+			Options graphOptions = options.getOptions(GRAPH_NAME);
+			vgOptions.loadOptions(graphOptions);
+			graphProvider.optionsChanged();
+		}
+		
+		@Override
+		public void locationChanged(ProgramLocation loc) {
+			locationUpdater.update();
+		}
+		
+		private void doLocationChanged() {
+			graphProvider.locationChanged(getCurrentLocation());
+		}
+		
+		public void handleProviderLocationChanged(ProgramLocation location) {
+			GoToService goTo = getGoToService();
+			if (goTo == null) {
+				return;
+			}
+			
+			SystemUtilities.runSwingLater(() -> {
+				goTo.goTo(location);
+			});
+		}
+		
+		public void createChecklistActions() {
+			String popupGroup = "0"; 
+			
+			DockingAction showChecklistAction = new DockingAction("Show Namespaces in Graph Filter", getName(), KeyBindingType.SHARED) {
+				@Override
+				public void actionPerformed(ActionContext context) {
+					checklistProvider.open();
+					checklistProvider.buildTable();
+				}
+				
+				@Override
+				public boolean isEnabledForContext(ActionContext context) {
+					return symProvider.getCurrentSymbol() != null;
+				}
+			};
+			showChecklistAction.setPopupMenuData(
+					new MenuData(new String[] { "Show Namespaces in Graph Filter" }, popupGroup));
+			showChecklistAction.setDescription("Show Namespaces that have been added to the CodeCut Graph");
+			tool.addLocalAction(symProvider, showChecklistAction);
+		}
 }
