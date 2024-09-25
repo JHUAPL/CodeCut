@@ -54,13 +54,13 @@ class Net(torch.nn.Module):
                                  ReLU(),
                                  Linear(dim, dim), ReLU(), Linear(dim, dim))
         self.e_bn1 = torch.nn.LayerNorm(dim)
-        self.gin1 = nn.GINEConv(mlp1, train_eps=True).jittable()
+        self.gin1 = nn.GINEConv(mlp1, train_eps=True)
         self.bn1 = nn.PairNorm() # nn.LayerNorm(dim) #torch.nn.BatchNorm1d(dim)
 
         mlp2 = Sequential(Linear(dim, dim), ReLU(), Linear(dim, dim),
                           ReLU(),
                           Linear(dim, dim))
-        self.gin2 = nn.GINEConv(mlp2, train_eps=True).jittable()
+        self.gin2 = nn.GINEConv(mlp2, train_eps=True)
         self.bn2 = nn.PairNorm()  # nn.LayerNorm(dim) #torch.nn.BatchNorm1d(dim)
         self.e_mlp2 = Sequential(Linear(3*dim, dim),
                                  ReLU(),
@@ -74,7 +74,7 @@ class Net(torch.nn.Module):
                           Linear(dim, dim),
                           ReLU(),
                           Linear(dim, dim))
-        self.gin3 = nn.GINEConv(mlp3, train_eps=True).jittable()
+        self.gin3 = nn.GINEConv(mlp3, train_eps=True)
         self.bn3 = nn.PairNorm()  # nn.LayerNorm(dim)
         self.e_mlp3 = Sequential(Linear(3*dim, dim),
                                  ReLU(),
@@ -142,7 +142,8 @@ def load_gnn(model_file):
     )
 
     loaded_weights = torch.load(model_file,
-                                map_location=torch.device('cpu'))
+                                map_location=torch.device('cpu'),
+                                weights_only=True)
     model.load_state_dict(loaded_weights)
 
     return model
