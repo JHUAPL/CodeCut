@@ -60,7 +60,7 @@ CodeCut contains two options for exporting a full module or a subrange of a modu
 ## The CodeCut Graph
 ![](img/graph-pic.png)
 
-CodeCut now has a graph option for viewing interactions / hierarchy of the modules within a binary.  Add namespaces to the graph view by right clicking a function in the CodeCut Table and choosing **Add Namespace to Graph**.  You can  
+CodeCut now has a graph option for viewing interactions / hierarchy of the modules within a binary.  Add namespaces to the graph view by right clicking a function in the CodeCut Table and choosing **Add Namespace to Graph**.  You can remove modules from the graph by right clicking and choosing **Show Namespaces in Graph Filter**.
 
 ## Limitations
 
@@ -70,10 +70,12 @@ While it looks like you can right click on the module names on the right side, C
 ### Address Range Peculiarities
 CodeCut attempts to order the namespaces by their starting address.  CodeCut may appear to list the modules out of order, however this is usually due to disassembly irregularities from Ghidra.  E.g. let's say we have a memory map that looks like:
 
+```
 object2:  0x00010000 - 0x00018000
 object3:  0x00018004 - 0x00020000
 ...
 object50: 0x00480000 - 0x00480a00
+```
 
 Say the function at 0x00480000 makes a branch or jump to an address 0x00016008.  This should be a new function entry point, but if only one function uses it, Ghidra might not label this as a function entry point, and just consider it part of FUN_00480000.  This means that object50's actual range is 0x00016008 - 0x00480a00.  And so object50 will show up in between object2 and object3 in the table.  CodeCut outputs the module ranges into Ghidra's application log for help with debugging this.  In this case defining 0x00016008 as a function will cause object50's bounds to be the right values and object50 will show up at the right place in the table.
 
