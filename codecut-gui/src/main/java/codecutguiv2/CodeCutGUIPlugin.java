@@ -87,8 +87,8 @@ import ghidra.program.util.DefinedDataIterator;
 import ghidra.program.util.GhidraProgramUtilities;
 import ghidra.program.util.ProgramChangeRecord;
 import ghidra.program.util.ProgramLocation;
-import ghidra.python.GhidraPythonInterpreter;
-import ghidra.python.PythonScript;
+import ghidra.jython.GhidraJythonInterpreter;
+import ghidra.jython.JythonScript;
 import ghidra.util.HTMLUtilities;
 import ghidra.util.HelpLocation;
 import ghidra.util.Msg;
@@ -1405,7 +1405,7 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 		} 
 	
 	}
-	private class CExporter extends PythonScript{
+	private class CExporter extends JythonScript{
 		Program program = GhidraProgramUtilities.getCurrentProgram(tool);
 		GhidraState state = new GhidraState(tool, tool.getProject(), program, null, null, null);
 		String start_addr; 
@@ -1417,7 +1417,7 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 			this.start_addr = start;
 			this.end_addr = end; 
 			this.outfile = file.getAbsolutePath(); 
-			this.state.addEnvironmentVar("ghidra.python.interpreter", GhidraPythonInterpreter.get());
+			this.state.addEnvironmentVar("ghidra.python.interpreter", GhidraJythonInterpreter.get());
 			this.path = this.outfile.substring(0, this.outfile.lastIndexOf("/")+1);
 		}
 		@Override
