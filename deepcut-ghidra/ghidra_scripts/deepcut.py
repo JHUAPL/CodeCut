@@ -1,6 +1,4 @@
-#!/usr/bin/env python
-#
-# © 2022 The Johns Hopkins University Applied Physics Laboratory LLC
+# (C) 2022 The Johns Hopkins University Applied Physics Laboratory LLC
 # (JHU/APL).  All Rights Reserved.
 #
 # This material may be only be used, modified, or reproduced by or for
@@ -9,7 +7,7 @@
 # permission, please contact the Office of Technology Transfer at
 # JHU/APL.
 #
-# NO WARRANTY, NO LIABILITY. THIS MATERIAL IS PROVIDED “AS IS.” JHU/APL
+# NO WARRANTY, NO LIABILITY. THIS MATERIAL IS PROVIDED "AS IS." JHU/APL
 # MAKES NO REPRESENTATION OR WARRANTY WITH RESPECT TO THE PERFORMANCE OF
 # THE MATERIALS, INCLUDING THEIR SAFETY, EFFECTIVENESS, OR COMMERCIAL
 # VIABILITY, AND DISCLAIMS ALL WARRANTIES IN THE MATERIAL, WHETHER
@@ -28,7 +26,6 @@
 # This material is based upon work supported by the Defense Advanced Research
 # Projects Agency (DARPA) and Naval Information Warfare Center Pacific (NIWC Pacific)
 # under Contract Number N66001-20-C-4024.
-
 
 import json
 import sys
@@ -188,7 +185,7 @@ def main():
     if len(sys.argv) == 2:
         model_file = sys.argv[1]
     else:
-        model_file = "model_weights_1.p"
+        model_file = "model_weights.p"
 
     d = Deepcut(fcg, model_file)
 

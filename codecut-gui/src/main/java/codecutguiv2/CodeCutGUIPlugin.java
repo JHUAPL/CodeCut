@@ -84,6 +84,7 @@ import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.*;
 import ghidra.program.util.ChangeManager;
 import ghidra.program.util.DefinedDataIterator;
+import ghidra.program.util.DefinedStringIterator;
 import ghidra.program.util.GhidraProgramUtilities;
 import ghidra.program.util.ProgramChangeRecord;
 import ghidra.program.util.ProgramLocation;
@@ -1069,7 +1070,8 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 			Accumulator<ProgramLocation> accumulator = new ListAccumulator<>();
 
 			Swing.allowSwingToProcessEvents();
-			for (Data stringInstance : DefinedDataIterator.definedStrings(currentProgram)) {
+			// 09032025 Vivian, changed to accommodate updated ghidra api
+			for (Data stringInstance : DefinedStringIterator.forProgram(currentProgram)) {
 				Address strAddr = stringInstance.getAddress();
 				ReferenceIterator refIterator = refManager.getReferencesTo(strAddr);
 				while (refIterator.hasNext()) {

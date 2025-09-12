@@ -25,11 +25,16 @@
 
 package deepcut;
 
+import java.io.FileNotFoundException;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import ghidra.app.script.GhidraScriptLoadException;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
-import ghidra.app.util.opinion.ElfLoader;
 import ghidra.framework.options.Options;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressFactory;
@@ -40,34 +45,32 @@ import ghidra.program.model.listing.Program;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.SymbolTable;
+import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.exception.InvalidInputException;
 import ghidra.util.task.TaskMonitor;
 
-import com.google.gson.GsonBuilder;
-
 /**
- * TODO: Provide class-level documentation that describes what this analyzer does.
+ * Uses the DeepCut algorithm to find module boundaries.
  */
 public class DeepCutAnalyzer extends AbstractAnalyzer {
-	private final static String NAME = "Deepcut";
-	private final static String DESCRIPTION = "Uses the deepcut algorithm to find module boundaries.";
-	
-	private final static String OPTION_NAME_PYTHON_EXEC = "Python Executable";
-	private final static String OPTION_DESCRIPTION_PYTHON_EXEC = "";
-	private final static String OPTION_DEFAULT_PYTHON_EXEC = "/usr/bin/python3";
-	private String pythonExec = OPTION_DEFAULT_PYTHON_EXEC;
+    private static final String NAME = "Deepcut";
+    private static final String DESCRIPTION = "Uses the deepcut algorithm to find module boundaries.";
 
-	public DeepCutAnalyzer() {
-		super(NAME, DESCRIPTION, AnalyzerType.FUNCTION_ANALYZER);
-		setDefaultEnablement(false);
-		setPriority(AnalysisPriority.REFERENCE_ANALYSIS.after());
-		setPrototype();
-		setSupportsOneTimeAnalysis();
-	}
+    private final Gson gson = new GsonBuilder().create();
 
-	@Override
+    public DeepCutAnalyzer() {
+        super(NAME, DESCRIPTION, AnalyzerType.FUNCTION_ANALYZER);
+        setDefaultEnablement(false);
+        setPriority(AnalysisPriority.REFERENCE_ANALYSIS.after());
+        setPrototype();
+        setSupportsOneTimeAnalysis();
+        
+        Msg.info(this, "DeepCutAnalyzer loaded");
+    }
+
+    @Override
 	public boolean getDefaultEnablement(Program program) {
 		// Only supports one-time analysis.
 		return false;
@@ -80,86 +83,79 @@ public class DeepCutAnalyzer extends AbstractAnalyzer {
 
 	@Override
 	public void registerOptions(Options options, Program program) {
-		options.registerOption(OPTION_NAME_PYTHON_EXEC, pythonExec,
-				null, OPTION_DESCRIPTION_PYTHON_EXEC);	
+		// no options
 	}
 	
     @Override
     public void optionsChanged(Options options, Program program) {
-            pythonExec = options.getString(OPTION_NAME_PYTHON_EXEC, pythonExec);
+            // no options
     }
 
-    private boolean checkError(DeepCutPython deepcut, MessageLog log)
-    {
-		String error = deepcut.readProcessError();			
-		if (!error.isEmpty()) {
-			log.appendMsg(error);
-			return true;			
-		}
-  
-		return false;
-    }
-    
-	@Override
-	public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
-			throws CancelledException {
-		
-		DeepCutPython deepcut = new DeepCutPython(pythonExec);
-		FunctionCallGraph fcg = new FunctionCallGraph(program, monitor);
-		
-		try {
-			deepcut.startProcess();
-		
-			if (checkError(deepcut, log)) {
-				return false;
+
+    @Override
+    public boolean added(Program program, AddressSetView set, TaskMonitor monitor, MessageLog log)
+            throws CancelledException {
+
+        
+            // 1) Build input JSON from the program
+            FunctionCallGraph fcg = new FunctionCallGraph(program, monitor);
+            String inputJson = fcg.toJson();
+
+            // 2) Run DeepCut via the launcher (blocking, file-IO args under the hood)
+            String cutsJson="";
+			try {
+				cutsJson = DeepCutLauncher.runDeepCutFileMode(program, set, inputJson, monitor);
+			} catch (IllegalAccessException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (FileNotFoundException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} catch (GhidraScriptLoadException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
 			}
-			
-			deepcut.writeProcess(fcg.toJson() + "\n");
-			deepcut.waitFor();
+            if (cutsJson == null || cutsJson.isEmpty()) {
+                log.appendMsg("DeepCut returned no output.");
+                return false;
+            }
+            
+        try {
 
-			if (checkError(deepcut, log)) {
-				return false;
-			}			
-			
-			String cuts_json = deepcut.readProcessOutput();
+            // 3) Parse result and apply namespaces
+            Cut[] cuts = gson.fromJson(cutsJson, Cut[].class);
+            int i = 0;
 
-			
-			Cut[] cuts = new GsonBuilder().create().fromJson(cuts_json, Cut[].class);
+            for (FunctionInfo fi : fcg.getFunctionInfos()) {
+                AddressFactory af = program.getAddressFactory();
+                Address cutAddress = af.getAddress(cuts[i].address);
 
-			int i = 0;
-			for (FunctionInfo fi : fcg.getFunctionInfos()) {
-				AddressFactory af = program.getAddressFactory();
-				Address cutAddress = af.getAddress(cuts[i].address);
-				
-				if (fi.getAddress().compareTo(cutAddress) == -1) {
-					addNamespace(program, "object" + i, fi.getFunction());
-				} else {
-					i++;
-					addNamespace(program, "object" + i, fi.getFunction());
-				}				
-			}		
-		} catch (Exception e) {
-			log.appendException(e);
-			return false;
-		}
-		
-		return true;
-	}
-	
-
-
-	public void addNamespace(Program program, String name, Function function)
-			throws DuplicateNameException, InvalidInputException, CircularDependencyException {
-        SymbolTable symbolTable = program.getSymbolTable();
-        Namespace namespace = null;
-		
-        namespace = symbolTable.getNamespace(name, null);
-        if(namespace == null) {
-        	namespace = symbolTable.createNameSpace(null, name,
-                                                        SourceType.USER_DEFINED);
+                if (fi.getAddress().compareTo(cutAddress) < 0) {
+                    addNamespace(program, "object" + i, fi.getFunction());
+                } else {
+                    i++;
+                    addNamespace(program, "object" + i, fi.getFunction());
+                    if (i >= cuts.length) {
+                        // no more cuts; remaining functions go into the last bucket
+                        // (optional: break; if you prefer to stop assigning)
+                        i = cuts.length - 1;
+                    }
+                }
+            }
+            return true;
+        } catch (Exception e) {
+            log.appendException(e);
+            return false;
         }
-
-        function.setParentNamespace(namespace);
     }
 
+    private void addNamespace(Program program, String name, Function function)
+            throws DuplicateNameException, InvalidInputException, CircularDependencyException {
+        SymbolTable symbolTable = program.getSymbolTable();
+        Namespace ns = symbolTable.getNamespace(name, null);
+        if (ns == null) {
+            ns = symbolTable.createNameSpace(null, name, SourceType.USER_DEFINED);
+        }
+        function.setParentNamespace(ns);
+    }
 }

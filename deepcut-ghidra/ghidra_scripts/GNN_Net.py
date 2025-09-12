@@ -1,4 +1,4 @@
-# © 2021 The Johns Hopkins University Applied Physics Laboratory LLC
+# (C) 2022 The Johns Hopkins University Applied Physics Laboratory LLC
 # (JHU/APL).  All Rights Reserved.
 #
 # This material may be only be used, modified, or reproduced by or for
@@ -7,7 +7,7 @@
 # permission, please contact the Office of Technology Transfer at
 # JHU/APL.
 #
-# NO WARRANTY, NO LIABILITY. THIS MATERIAL IS PROVIDED “AS IS.” JHU/APL
+# NO WARRANTY, NO LIABILITY. THIS MATERIAL IS PROVIDED "AS IS." JHU/APL
 # MAKES NO REPRESENTATION OR WARRANTY WITH RESPECT TO THE PERFORMANCE OF
 # THE MATERIALS, INCLUDING THEIR SAFETY, EFFECTIVENESS, OR COMMERCIAL
 # VIABILITY, AND DISCLAIMS ALL WARRANTIES IN THE MATERIAL, WHETHER
@@ -88,12 +88,6 @@ class Net(torch.nn.Module):
         self.out2 = torch.nn.Linear(dim, 4)
 
     def forward(self, x, edge_attr, edge_index, batch):
-        # x, edge_attr, edge_index, batch = (
-        #     data.x,
-        #     data.edge_attr,
-        #     data.edge_index,
-        #     data.batch,
-        # )
 
         x = F.relu(self.init_mlp(x))
         x = self.init_bn(x)
@@ -118,20 +112,14 @@ class Net(torch.nn.Module):
         edge_attr = self.e_mlp3(edge_attr)
         edge_attr = self.ebn2(edge_attr)  # oops typo this should be a 3
 
-        #x = x[edge_index[0]] + x[edge_index[1]] + edge_attr
-        #x = F.softmax(x, dim=1)
-        #edge_attr = F.softmax(edge_attr, dim=1)
         x = torch.cat([x[edge_index[0]], x[edge_index[1]], edge_attr], dim=1)
 
         x = F.relu(self.out1(x))
         x = self.out_bn(x)
         x = self.out2(x)
 
-        #ret = torch.max(x, dim=1)[0]
         ret = torch.mean(x, dim=1)
 
-        #ret = torch.max(x[edge_index[0]] + x[edge_index[1]], dim=1)[0]
-        #ret = torch.mean(x[edge_index[0]] + x[edge_index[1]], dim=1)
         return ret
 
 def load_gnn(model_file):
