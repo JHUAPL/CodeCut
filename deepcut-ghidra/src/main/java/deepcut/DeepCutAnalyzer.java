@@ -104,7 +104,7 @@ public class DeepCutAnalyzer extends AbstractAnalyzer {
             // 2) Run DeepCut via the launcher (blocking, file-IO args under the hood)
             String cutsJson="";
 			try {
-				cutsJson = DeepCutLauncher.runDeepCutFileMode(program, set, inputJson, monitor);
+				cutsJson = DeepCutLauncher.runFileMode(program, set, inputJson, monitor);
 			} catch (IllegalAccessException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();

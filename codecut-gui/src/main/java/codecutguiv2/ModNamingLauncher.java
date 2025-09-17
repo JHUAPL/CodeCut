@@ -23,7 +23,7 @@
 * HAVE A NICE DAY.
 */
 
-package deepcut;
+package codecutguiv2;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -40,7 +40,6 @@ import ghidra.app.script.GhidraScriptProvider;
 import ghidra.app.script.GhidraScriptUtil;
 import ghidra.app.script.GhidraState;
 import ghidra.app.services.ConsoleService;
-import ghidra.framework.Application;
 import ghidra.framework.model.Project;
 import ghidra.framework.plugintool.PluginTool;
 import ghidra.program.model.address.AddressSetView;
@@ -51,10 +50,10 @@ import ghidra.util.Msg;
 import ghidra.util.exception.CancelledException;
 import ghidra.util.task.TaskMonitor;
 
-public class DeepCutLauncher {
+public class ModNamingLauncher {
 
     /**
-     * Runs DeepCutRun.py synchronously with three args: infile, outfile, modelfile.
+     * Runs modnaming.py synchronously with two args: infile and outfile.
      * Writes the provided JSON string to a temp infile, runs the script, reads the temp outfile,
      * and returns its contents. Best-effort temp cleanup.
      * @throws IllegalAccessException
@@ -64,7 +63,7 @@ public class DeepCutLauncher {
                                             AddressSetView set,
                                             String inputJson,
                                             TaskMonitor monitor) throws IllegalAccessException, FileNotFoundException, GhidraScriptLoadException {
-        final String scriptName = "DeepCutRun.py"; // must be on Ghidra script path
+        final String scriptName = "ModNamingRun.py"; // must be on Ghidra script path
 
         AutoAnalysisManager aam = AutoAnalysisManager.getAnalysisManager(program);
         PluginTool tool = aam.getAnalysisTool();
@@ -92,13 +91,9 @@ public class DeepCutLauncher {
             if (provider == null) {
                 throw new IllegalAccessException("Couldn't find script provider for: " + scriptName);
             }
-            ResourceFile pythonFile = Application.getModuleDataFile("model_weights.p");
-            if (pythonFile == null) {
-                throw new IllegalAccessException("Couldn't find weights file for: " + scriptName);
-            }
             
 
-            Msg.info(DeepCutLauncher.class, "Chosen provider: " + provider.getClass().getName() + "  (runtime=" + provider.getRuntimeEnvironmentName() + ")");
+            Msg.info(ModNamingLauncher.class, "Chosen provider: " + provider.getClass().getName() + "  (runtime=" + provider.getRuntimeEnvironmentName() + ")");
             
             GhidraScript script;
             try {
@@ -108,10 +103,10 @@ public class DeepCutLauncher {
             	Msg.showError(
             	        null,                      // parent object (your plugin/analyzer/launcher)
             	        null,                      // parent component (null = center on tool)
-            	        "DeepCut Failed to Launch",       // dialog title
-            	        "DeepCut requires the PyGhidra extension.\n\nDetails: " + e.getMessage()
+            	        "Module Naming Failed to Launch",       // dialog title
+            	        "Module Naming requires the PyGhidra extension.\n\nDetails: " + e.getMessage()
             	    );
-            	    throw new GhidraScriptLoadException("DeepCut requires PyGhidra", e);
+            	    throw new GhidraScriptLoadException("Module Naming requires PyGhidra", e);
             }
             
              
@@ -119,8 +114,8 @@ public class DeepCutLauncher {
             try {
 
             // 2) Prep temp files
-            inFile  = Files.createTempFile("deepcut_in",  ".json");
-            outFile = Files.createTempFile("deepcut_out", ".json");
+            inFile  = Files.createTempFile("modnaming_in",  ".txt");
+            outFile = Files.createTempFile("modnaming_out", ".txt");
             // ensure delete on JVM exit as a fallback
             inFile.toFile().deleteOnExit();
             outFile.toFile().deleteOnExit();
@@ -128,11 +123,10 @@ public class DeepCutLauncher {
             // write input JSON
             Files.writeString(inFile, (inputJson == null ? "" : inputJson) + "\n", StandardCharsets.UTF_8);
 
-            // 3) Pass args: [infile, outfile, modelfile]
+            // 3) Pass args: [infile, outfile]
             script.setScriptArgs(new String[] {
             		inFile.toString(),
-            		outFile.toString(),
-            		pythonFile.toString() });
+            		outFile.toString() });
             
             
 
@@ -148,7 +142,7 @@ public class DeepCutLauncher {
             return null;
         }
         catch (Exception e) {
-            Msg.warn(DeepCutLauncher.class, "Error running script " + scriptName + ": " + e.getMessage(), e);
+            Msg.warn(ModNamingLauncher.class, "Error running script " + scriptName + ": " + e.getMessage(), e);
             return null;
         }
         finally {
