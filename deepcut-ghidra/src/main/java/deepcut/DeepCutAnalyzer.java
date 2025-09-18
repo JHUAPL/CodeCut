@@ -30,11 +30,13 @@ import java.io.FileNotFoundException;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import generic.jar.ResourceFile;
 import ghidra.app.script.GhidraScriptLoadException;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
+import ghidra.framework.Application;
 import ghidra.framework.options.Options;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressFactory;
@@ -104,7 +106,7 @@ public class DeepCutAnalyzer extends AbstractAnalyzer {
             // 2) Run DeepCut via the launcher (blocking, file-IO args under the hood)
             String cutsJson="";
 			try {
-				cutsJson = DeepCutLauncher.runFileMode(program, set, inputJson, monitor);
+				cutsJson = DeepCutLauncher.execute(program, set, inputJson, monitor);
 			} catch (IllegalAccessException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
@@ -159,3 +161,6 @@ public class DeepCutAnalyzer extends AbstractAnalyzer {
         function.setParentNamespace(ns);
     }
 }
+
+
+

@@ -29,13 +29,14 @@
 
 package codecutguiv2;
 
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
+import ghidra.app.script.GhidraScriptLoadException;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSet;
 import ghidra.program.model.address.AddressSetView;
@@ -180,7 +181,7 @@ public class ModNamingAnalyzer {
 								}
 
 								
-								String suggestedName = ModNamingLauncher.runFileMode(currentProgram, set, allStrings, monitor);
+								String suggestedName = ModNamingLauncher.execute(currentProgram, set, allStrings, monitor);
 								
 								//if name is "unknown" (e.g. modnaming found no repeated strings) don't bother renaming 
 								if (suggestedName.equals("unknown")) {
@@ -245,3 +246,34 @@ public class ModNamingAnalyzer {
     
     
 }
+
+
+
+
+class ModNamingLauncher extends PyGhidraFileLauncher {
+
+    @Override protected String getScriptName() { return "ModNamingRun.py"; }
+    @Override protected String getInfilePrefix() { return "modnaming_in"; }
+    @Override protected String getOutfilePrefix() { return "modnaming_out"; }
+    @Override protected String getInfileSuffix() { return ".txt"; }
+    @Override protected String getOutfileSuffix() { return ".txt"; }
+
+    // No extra args needed
+    @Override protected String[] getExtraArgs(ghidra.framework.plugintool.PluginTool tool) { return new String[0]; }
+
+    // Convenience static method to preserve your old call-site signature
+    public static String execute(Program program,
+                                     AddressSetView set,
+                                     String inputPayload,
+                                     TaskMonitor monitor)
+            throws IllegalAccessException, FileNotFoundException, GhidraScriptLoadException {
+        return new ModNamingLauncher().runFileMode(program, set, inputPayload, monitor);
+    }
+
+    @Override protected String getLaunchFailDialogTitle() { return "Module Naming Failed to Launch"; }
+    @Override protected String getLaunchFailDialogBodyPrefix() {
+        return "Module Naming requires the PyGhidra extension.\n\nDetails: ";
+    }
+}
+
+

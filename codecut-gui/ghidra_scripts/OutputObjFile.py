@@ -1,3 +1,6 @@
+#@category CodeCut
+#@runtime PyGhidra
+#
 ## Copyright 2022 The Johns Hopkins University Applied Physics Laboratory LLC
 ## (JHU/APL).  All Rights Reserved.
 #

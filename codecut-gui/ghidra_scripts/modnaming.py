@@ -21,6 +21,8 @@
 # under Contract Number N66001-20-C-4024.
 #
 
+import sys
+print(sys.executable)
 
 import sys
 import math

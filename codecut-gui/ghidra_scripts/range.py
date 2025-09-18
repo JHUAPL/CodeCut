@@ -1,4 +1,6 @@
-#@category AMP-Improved
+#@category CodeCut
+#@runtime PyGhidra
+
 from generate_c import generate_recompilable_c_code
 import os
 from ghidra.util.task import TaskMonitor

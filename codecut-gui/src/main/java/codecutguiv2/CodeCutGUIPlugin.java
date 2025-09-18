@@ -50,6 +50,7 @@ import docking.tool.ToolConstants;
 import docking.widgets.OptionDialog;
 import docking.widgets.filechooser.GhidraFileChooser;
 import functioncalls.plugin.FcgProvider;
+import generic.jar.ResourceFile;
 import ghidra.app.CorePluginPackage;
 import ghidra.app.context.ProgramActionContext;
 import ghidra.app.context.ProgramContextAction;
@@ -58,9 +59,12 @@ import ghidra.app.events.ProgramActivatedPluginEvent;
 import ghidra.app.events.ProgramLocationPluginEvent;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
+import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.plugin.core.decompile.DecompilerProvider;
 import ghidra.app.plugin.core.symboltree.actions.*;
 import ghidra.app.script.GhidraScript;
+import ghidra.app.script.GhidraScriptProvider;
+import ghidra.app.script.GhidraScriptUtil;
 import ghidra.app.script.GhidraState;
 import ghidra.app.services.BlockModelService;
 import ghidra.app.services.GoToService;
@@ -88,8 +92,7 @@ import ghidra.program.util.DefinedStringIterator;
 import ghidra.program.util.GhidraProgramUtilities;
 import ghidra.program.util.ProgramChangeRecord;
 import ghidra.program.util.ProgramLocation;
-import ghidra.jython.GhidraJythonInterpreter;
-import ghidra.jython.JythonScript;
+import ghidra.program.util.ProgramSelection;
 import ghidra.util.HTMLUtilities;
 import ghidra.util.HelpLocation;
 import ghidra.util.Msg;
@@ -1222,7 +1225,7 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 		} 
 	
 	}
-	private class CExporter extends JythonScript{
+	private class CExporter extends GhidraScript{
 		Program program = GhidraProgramUtilities.getCurrentProgram(tool);
 		GhidraState state = new GhidraState(tool, tool.getProject(), program, null, null, null);
 		String start_addr; 
@@ -1234,7 +1237,6 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 			this.start_addr = start;
 			this.end_addr = end; 
 			this.outfile = file.getAbsolutePath(); 
-			this.state.addEnvironmentVar("ghidra.python.interpreter", GhidraJythonInterpreter.get());
 			this.path = this.outfile.substring(0, this.outfile.lastIndexOf("/")+1);
 		}
 		@Override
@@ -1245,7 +1247,8 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 			String[] args = {start_addr, end_addr, outfile}; 
 			try {
 				//runScript("ghidra2dwarf.py", args);
-				runScript("range.py",args);
+				runScript("range.py", args);
+				
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
