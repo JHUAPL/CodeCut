@@ -791,6 +791,31 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 		
 	}
 	
+	private class ModuleNamerV2 extends GhidraScript{
+		Program program = GhidraProgramUtilities.getCurrentProgram(tool);
+		GhidraState state = new GhidraState(tool, tool.getProject(), program, null, null, null);
+		String start_addr; 
+		String end_addr;
+		String path; 
+		
+		public ModuleNamerV2(String start, String end, File file) {
+			this.start_addr = start;
+			this.end_addr = end; 
+		}
+		@Override
+		public void run() {
+			String[] args = {start_addr, end_addr}; 
+			try {
+				runScript("range.py", args);
+				
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+	}
+	
+	
 	private void createExportActions() {
 //Need Decompiler extensions		
 		/*
@@ -1255,6 +1280,7 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 		}
 		
 	}
+	
 	private class OFileExporter extends GhidraScript{
 		
 		GhidraState state;

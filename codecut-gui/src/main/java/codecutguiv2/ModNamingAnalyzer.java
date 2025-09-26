@@ -146,9 +146,6 @@ public class ModNamingAnalyzer {
 		return allStrings;
     }
     
-    private String guessSingleModule(List<String> strList) {
-    	return "";
-    }
     
     public void guessModuleNames() {
 		Task guessNamesTask = new Task("Guess Module Names", true, true, true) {
@@ -186,7 +183,7 @@ public class ModNamingAnalyzer {
 								//if name is "unknown" (e.g. modnaming found no repeated strings) don't bother renaming 
 								if (suggestedName.equals("unknown")) {
 									Msg.info(this, "No name guess found for module " + ns.getName() + ", leaving unchanged");
-									break;
+									continue;
 								}
 
 								suggestedModuleNames.put(ns, suggestedName);
@@ -204,16 +201,18 @@ public class ModNamingAnalyzer {
 									num++;
 								}
 								Namespace newNs = null;
-								int transactionId = currentProgram.startTransaction("ns");
+								
+								int transactionId = currentProgram.startTransaction("CreateNamespace");
+								boolean success = false;
 								try {
-									newNs = currentProgram.getSymbolTable().createNameSpace(ns.getParentNamespace(), newName, SourceType.USER_DEFINED);
-									Msg.info(this, "Created NS with new name " + newName + " for module " + ns.getName());
+								    newNs = currentProgram.getSymbolTable()
+								            .createNameSpace(ns.getParentNamespace(), newName, SourceType.USER_DEFINED);
+								    success = true;
+								} catch (DuplicateNameException ex) {
+								    Msg.error(this, "Failed to create namespace for suggested name " + suggestedName, ex);
+								} finally {
+								    currentProgram.endTransaction(transactionId, success);
 								}
-								catch (DuplicateNameException ex) {
-									Msg.error(this, "Failed when trying to find and set name for suggested name " + suggestedName);
-									currentProgram.endTransaction(transactionId, false);
-								}
-								currentProgram.endTransaction(transactionId, true);
 								
 								try {
 									CodecutUtils.renameNamespace(currentProgram, ns, newNs);

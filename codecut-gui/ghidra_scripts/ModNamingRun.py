@@ -1,5 +1,5 @@
 # @category CodeCut
-# @menupath CodeCut.DeepCut (Run)
+# @menupath CodeCut.ModNaming (Run)
 # @toolbar codecut.png
 # @runtime PyGhidra
 

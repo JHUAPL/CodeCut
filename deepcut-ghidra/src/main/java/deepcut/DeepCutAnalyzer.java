@@ -30,13 +30,11 @@ import java.io.FileNotFoundException;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import generic.jar.ResourceFile;
 import ghidra.app.script.GhidraScriptLoadException;
 import ghidra.app.services.AbstractAnalyzer;
 import ghidra.app.services.AnalysisPriority;
 import ghidra.app.services.AnalyzerType;
 import ghidra.app.util.importer.MessageLog;
-import ghidra.framework.Application;
 import ghidra.framework.options.Options;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressFactory;
@@ -153,6 +151,7 @@ public class DeepCutAnalyzer extends AbstractAnalyzer {
 
     private void addNamespace(Program program, String name, Function function)
             throws DuplicateNameException, InvalidInputException, CircularDependencyException {
+   	
         SymbolTable symbolTable = program.getSymbolTable();
         Namespace ns = symbolTable.getNamespace(name, null);
         if (ns == null) {

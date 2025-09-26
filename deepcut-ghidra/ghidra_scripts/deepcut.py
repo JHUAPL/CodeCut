@@ -36,6 +36,7 @@ import torch
 from math import log2, copysign
 from networkx import DiGraph
 from scipy.linalg import toeplitz
+from scipy.sparse import coo_matrix, diags, csr_matrix
 
 import GNN_Net
 
@@ -106,38 +107,44 @@ class Deepcut:
 
     def _adjacency_matrix(self):
         num_funcs = len(self.graph.nodes)
-        A = np.zeros((num_funcs, num_funcs))
 
-        for e, v in zip(self.graph_connectivity, self.predicted_labels):
+        # Build sparse adjacency from predicted edge scores
+        rows = []
+        cols = []
+        vals = []
+        for (e, v) in zip(self.graph_connectivity, self.predicted_labels.flatten()):
             e0, e1 = e
-            A[e0, e1] = v
+            rows.append(e0)
+            cols.append(e1)
+            vals.append(float(v))
 
-        A += A.T
-        A *= 0.5
+        A = coo_matrix((vals, (rows, cols)), shape=(num_funcs, num_funcs))
 
-        """
-        add a small connection between adjacent nodes,
-        essentially to break ties in favor of merging communities
-        """
-        x = np.zeros(num_funcs)
-        x[1] = 0.05
-        A += toeplitz(x)
+        # Symmetrize and average: (A + A^T)/2
+        A = (A + A.T).multiply(0.5).tocsr()
 
-        return A
+        # Add small off-diagonal connection (equivalent to toeplitz([0, 0.05, 0, ...]))
+        off = diags([0.05 * np.ones(num_funcs - 1), 0.05 * np.ones(num_funcs - 1)],
+                    offsets=[-1, 1], shape=(num_funcs, num_funcs), format='csr')
+        A = (A + off).tocsr()
+
+        return A  # CSR sparse matrix
 
     def _modularity(self):
-        adj_matrix = self._adjacency_matrix()
-        # node degrees
-        k = np.sum(adj_matrix, axis=0)
-
-        k2 = np.array([k])
-        B = k2.T @ k2
-        B /= 2 * np.sum(k2)
-
-        Q = adj_matrix - B
+        A = self._adjacency_matrix()  # sparse CSR
+        # node degrees (as dense 1D array for lightweight vector ops)
+        k = np.array(A.sum(axis=0)).ravel()
+        two_m = 2.0 * k.sum()  # denominator used in modularity B term
 
         def compute_partial_modularity(start, stop):
-            return np.sum(Q[start:stop, start:stop])
+            # Sum of A over the block [start:stop, start:stop]
+            A_block_sum = A[start:stop, start:stop].sum()
+            # Sum of degrees in the block
+            k_block_sum = k[start:stop].sum()
+            # Sum of B over the block: (sum_k_block)^2 / (2m)
+            B_block_sum = (k_block_sum * k_block_sum) / two_m if two_m > 0 else 0.0
+            # Return sum(Q_block) = sum(A_block) - sum(B_block)
+            return float(A_block_sum) - float(B_block_sum)
 
         scores = [0.0]
         scores = np.array(scores)
@@ -148,15 +155,15 @@ class Deepcut:
 
         for index in range(1, len(self.graph.nodes)):
             update = [compute_partial_modularity(i, index) for i in
-                      range(max(0, index-max_cluster_size), index)]
+                      range(max(0, index - max_cluster_size), index)]
             if index > max_cluster_size:
-                update = [0]*(index-max_cluster_size) + update
+                update = [0] * (index - max_cluster_size) + update
             updated_scores = scores + update
 
             i = np.argmax(updated_scores)
 
             if index > max_cluster_size:
-                i = np.argmax(updated_scores[index-max_cluster_size:])+ (index - max_cluster_size)
+                i = np.argmax(updated_scores[index - max_cluster_size:]) + (index - max_cluster_size)
 
             s = updated_scores[i]
             c = cuts[i] + [index]
