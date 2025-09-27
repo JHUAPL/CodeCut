@@ -35,11 +35,11 @@ def decompile_user_functions_in_range(
         current_program.getAddressFactory().getAddress(end_address_str)
 
     if start_address is None or end_address is None:
-        print 'Invalid address range specified.'
+        print('Invalid address range specified.')
         return
 
     if start_address >= end_address:
-        print 'Invalid address range: start address should be less than end address.'
+        print('Invalid address range: start address should be less than end address.')
         return
 
     decompiler = DecompInterface()

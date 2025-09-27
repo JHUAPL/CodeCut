@@ -50,6 +50,7 @@ import docking.tool.ToolConstants;
 import docking.widgets.OptionDialog;
 import docking.widgets.filechooser.GhidraFileChooser;
 import functioncalls.plugin.FcgProvider;
+import generic.jar.ResourceFile;
 import ghidra.app.CorePluginPackage;
 import ghidra.app.context.ProgramActionContext;
 import ghidra.app.context.ProgramContextAction;
@@ -58,9 +59,12 @@ import ghidra.app.events.ProgramActivatedPluginEvent;
 import ghidra.app.events.ProgramLocationPluginEvent;
 import ghidra.app.plugin.PluginCategoryNames;
 import ghidra.app.plugin.ProgramPlugin;
+import ghidra.app.plugin.core.analysis.AutoAnalysisManager;
 import ghidra.app.plugin.core.decompile.DecompilerProvider;
 import ghidra.app.plugin.core.symboltree.actions.*;
 import ghidra.app.script.GhidraScript;
+import ghidra.app.script.GhidraScriptProvider;
+import ghidra.app.script.GhidraScriptUtil;
 import ghidra.app.script.GhidraState;
 import ghidra.app.services.BlockModelService;
 import ghidra.app.services.GoToService;
@@ -84,11 +88,11 @@ import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.*;
 import ghidra.program.util.ChangeManager;
 import ghidra.program.util.DefinedDataIterator;
+import ghidra.program.util.DefinedStringIterator;
 import ghidra.program.util.GhidraProgramUtilities;
 import ghidra.program.util.ProgramChangeRecord;
 import ghidra.program.util.ProgramLocation;
-import ghidra.jython.GhidraJythonInterpreter;
-import ghidra.jython.JythonScript;
+import ghidra.program.util.ProgramSelection;
 import ghidra.util.HTMLUtilities;
 import ghidra.util.HelpLocation;
 import ghidra.util.Msg;
@@ -131,10 +135,6 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 
 	final static Cursor WAIT_CURSOR = new Cursor(Cursor.WAIT_CURSOR);
 	final static Cursor NORM_CURSOR = new Cursor(Cursor.DEFAULT_CURSOR);
-
-	private final static String OPTION_NAME_PYTHON_EXEC = "Python Executable";
-	private final static String OPTION_DEFAULT_PYTHON_EXEC = "/usr/bin/python3";
-	private String pythonExec = OPTION_DEFAULT_PYTHON_EXEC;
 	
 	private DockingAction openRefsAction;
 	private DockingAction deleteAction;
@@ -179,9 +179,6 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 	
 	public CodeCutGUIPlugin(PluginTool tool) {
 		super(tool);
-
-		ToolOptions options = tool.getOptions(OPTION_NAME_PYTHON_EXEC);
-		options.setString(OPTION_NAME_PYTHON_EXEC, OPTION_DEFAULT_PYTHON_EXEC);
 		
 		swingMgr = new SwingUpdateManager(1000, () -> {
 			symProvider.getComponent().repaint();
@@ -778,12 +775,9 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 			
 			@Override 
 			protected void actionPerformed(ProgramActionContext programContext) {
-				getModuleStrings();
-				ToolOptions options = CodeCutGUIPlugin.this.tool.getOptions(OPTION_NAME_PYTHON_EXEC);
-				CodeCutGUIPlugin.this.pythonExec = options.getString(OPTION_NAME_PYTHON_EXEC, CodeCutGUIPlugin.this.pythonExec);
-				if (stringMap != null) {
-					guessModuleNames();
-				}
+				ModNamingAnalyzer analyzer = new ModNamingAnalyzer(currentProgram);
+				analyzer.getModuleStrings();
+				analyzer.guessModuleNames();
 				symProvider.reload();
 			}
 		};
@@ -796,6 +790,31 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 		
 		
 	}
+	
+	private class ModuleNamerV2 extends GhidraScript{
+		Program program = GhidraProgramUtilities.getCurrentProgram(tool);
+		GhidraState state = new GhidraState(tool, tool.getProject(), program, null, null, null);
+		String start_addr; 
+		String end_addr;
+		String path; 
+		
+		public ModuleNamerV2(String start, String end, File file) {
+			this.start_addr = start;
+			this.end_addr = end; 
+		}
+		@Override
+		public void run() {
+			String[] args = {start_addr, end_addr}; 
+			try {
+				runScript("range.py", args);
+				
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+	}
+	
 	
 	private void createExportActions() {
 //Need Decompiler extensions		
@@ -938,183 +957,9 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 	}
 
 
-	private void guessModuleNames() {
-		Task guessNamesTask = new Task("Guess Module Names", true, true, true) {
-			@Override 
-			public void run(TaskMonitor monitor) {
-				monitor.setMessage("Gathering string information...");
-				long startCount = stringMap.size();
-				long numRemaining = stringMap.size();
-				monitor.initialize(startCount);
-				
-				// Force the updating state so the CodeCut GUI does not attempt to refresh
-				// until after all updates are complete (makes things MUCH faster).
-				CodecutUtils.setUpdating(true);
-				
-				try {
-					for (Map.Entry<Namespace, List<String>> entry : stringMap.entrySet()) {		
-						
-						if (!monitor.isCancelled()) {
-							ModNamingPython modNamer = new ModNamingPython(pythonExec);
-							Namespace ns = entry.getKey();
-							
-							if (!ns.getName().equals("Global")) {
-								List<String> strList = entry.getValue();
-								monitor.setMessage("Guessing module name for " + ns.getName());
-								
-								String sep = "tzvlw"; // separator used by modnaming.py
-														
-								String allStrings = String.join(" " + sep + " ", strList);
-								
-								allStrings = allStrings.replaceAll("%[0-9A-Za-z]+"," ");
-								allStrings = allStrings.replaceAll("-","_");
-								allStrings = allStrings.replaceAll("_"," ");
-								allStrings = allStrings.replaceAll("[/\\\\]"," ");
-								allStrings = allStrings.replaceAll("[^A-Za-z0-9_.]"," ");
-								allStrings = allStrings.concat("\r\n\0");
 	
-								int success = modNamer.startProcess();
-								if (success == -1) {
-									return;
-								}
-					
-								String error = modNamer.readProcessError();
-								if (!error.isEmpty()) {
-									Msg.error(this, "Error starting module name guessing script: " + error);
-									break;
-								}
-								
-								modNamer.writeProcess(allStrings);
-								
-								modNamer.waitFor();
-								
-								error = modNamer.readProcessError();
-								if (!error.isEmpty()) {
-									Msg.error(this, "Error providing strings to module name guessing script " + error);
-									break;
-								}
-								
-								String suggestedName = modNamer.readProcessOutput();
-								//if name is "unknown" (e.g. modnaming found no repeated strings) don't bother renaming 
-								if (suggestedName.equals("unknown")) {
-									Msg.info(this, "No name guess found for module " + ns.getName() + ", leaving unchanged");
-									break;
-								}
-
-								suggestedModuleNames.put(ns, suggestedName);
-								
-								// Update namespace (module) to use new name
-								// suggestedModuleNames is created in case this is later 
-								// extended to have a GUI window for the user to accept/modify
-								// names before updating, in which case this update should
-								// happen elsewhere.
-								monitor.setMessage("Updating module name of " + ns.getName() + "...");
-								String newName = suggestedName;
-								int num = 1;
-								while (!CodecutUtils.getMatchingNamespaces(newName, Arrays.asList(currentProgram.getGlobalNamespace()), currentProgram).isEmpty()) {
-									newName = suggestedName.concat(Integer.toString(num));
-									num++;
-								}
-								Namespace newNs = null;
-								int transactionId = currentProgram.startTransaction("ns");
-								try {
-									newNs = currentProgram.getSymbolTable().createNameSpace(ns.getParentNamespace(), newName, SourceType.USER_DEFINED);
-									Msg.info(this, "Created NS with new name " + newName + " for module " + ns.getName());
-								}
-								catch (DuplicateNameException ex) {
-									Msg.error(this, "Failed when trying to find and set name for suggested name " + suggestedName);
-									currentProgram.endTransaction(transactionId, false);
-								}
-								currentProgram.endTransaction(transactionId, true);
-								
-								try {
-									CodecutUtils.renameNamespace(currentProgram, ns, newNs);
-									Msg.info(this, "Namespace " + ns.getName() + " renamed to " + newNs.getName());
-								} catch (Exception ex) {
-									Msg.info(this, "Exception when renaming namespace " + ns.getName() + ": " + ex.getMessage());
-									
-								}
-							}
-							numRemaining--;
-							monitor.setProgress(startCount - numRemaining);
-						}
-						else { // Task cancelled
-							suggestedModuleNames.clear();
-							suggestedModuleNames = null;
-						}
-					}
-							
-				} catch (Exception e) {
-					Msg.error(this, "Module name guessing failed: " + e);
-					e.printStackTrace();
-				}
-				CodecutUtils.setUpdating(false);
-				
-			}
-		};
-		
-		new TaskLauncher(guessNamesTask, null, 250);
-	}
 	
-	private void getModuleStrings() {
-		try {	
-			SymbolTable symbolTable = currentProgram.getSymbolTable();
-			ReferenceManager refManager = currentProgram.getReferenceManager();
-			
-			TaskMonitor monitor = new TaskMonitorAdapter();
-			monitor.setCancelEnabled(true);
-			Listing listing = currentProgram.getListing();
-			monitor.initialize(listing.getNumDefinedData());
-			
-			Accumulator<ProgramLocation> accumulator = new ListAccumulator<>();
-
-			Swing.allowSwingToProcessEvents();
-			for (Data stringInstance : DefinedDataIterator.definedStrings(currentProgram)) {
-				Address strAddr = stringInstance.getAddress();
-				ReferenceIterator refIterator = refManager.getReferencesTo(strAddr);
-				while (refIterator.hasNext()) {
-					Reference ref = refIterator.next();
-					Namespace refNamespace = symbolTable.getNamespace(ref.getFromAddress());
-					Namespace parentNs = refNamespace.getParentNamespace();
-					String str = StringDataInstance.getStringDataInstance(stringInstance).getStringValue();
-					
-					// parent namespace is correct one to use BUT MAY BE NULL IF GLOBAL WAS ORIGINAL
-					Namespace module;
-					if (parentNs != null) {
-						module = parentNs;
-					}
-					else {
-						module = refNamespace;
-					}
-					
-					List<String> list = stringMap.get(module);
-					if (list != null) {
-						list.add(str);
-						stringMap.put(module, list);
-					}
-					else {
-						List<String> newList = new ArrayList<String>();
-						newList.add(str);
-						stringMap.put(module, newList);
-					}
-				}
-				
-				ProgramLocation pl = new ProgramLocation(currentProgram, stringInstance.getMinAddress(), 
-						stringInstance.getComponentPath(), null, 0, 0, 0);
-				
-				accumulator.add(pl);
-				//monitor.checkCanceled();
-				monitor.incrementProgress(1);
-			}
-			
-		} catch (Exception e) {
-			Msg.error(this, "Error when getting strings for each module: " + e);
-			e.printStackTrace();
-		}
-	}
-	
-
-	private void importModuleMap() {
+		private void importModuleMap() {
 		Task importModMapTask = new Task("Import Module Map", true, true, true) {
 			@Override 
 			public void run(TaskMonitor monitor) {
@@ -1405,7 +1250,7 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 		} 
 	
 	}
-	private class CExporter extends JythonScript{
+	private class CExporter extends GhidraScript{
 		Program program = GhidraProgramUtilities.getCurrentProgram(tool);
 		GhidraState state = new GhidraState(tool, tool.getProject(), program, null, null, null);
 		String start_addr; 
@@ -1417,7 +1262,6 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 			this.start_addr = start;
 			this.end_addr = end; 
 			this.outfile = file.getAbsolutePath(); 
-			this.state.addEnvironmentVar("ghidra.python.interpreter", GhidraJythonInterpreter.get());
 			this.path = this.outfile.substring(0, this.outfile.lastIndexOf("/")+1);
 		}
 		@Override
@@ -1428,13 +1272,15 @@ public class CodeCutGUIPlugin extends ProgramPlugin implements DomainObjectListe
 			String[] args = {start_addr, end_addr, outfile}; 
 			try {
 				//runScript("ghidra2dwarf.py", args);
-				runScript("range.py",args);
+				runScript("range.py", args);
+				
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
 		
 	}
+	
 	private class OFileExporter extends GhidraScript{
 		
 		GhidraState state;

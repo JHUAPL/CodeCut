@@ -17,7 +17,7 @@ def get_global_variables(program, start_addr, end_addr):
     #set.addRange(start_addr, end_addr)   
     print(start_address, end_address)
     print(addrset)
-
+    
     #for symbol in symbol_table.getAllSymbols(False):
     for symbol in symbol_table.getSymbols(addrset,SymbolType.LABEL,True):
         print(symbol)
@@ -27,30 +27,30 @@ def get_global_variables(program, start_addr, end_addr):
                     if (program.getListing().getDataAt(symbol.getAddress())):
                         global_vars.append(symbol)
 
-	'''
+    '''
     def is_user_defined(var):
         var_name = var.getName()
         var_addr = var.getAddress()
-
+    
         if var_name.startswith('__') or var_name.startswith('_'):
             return False
-
+    
         if var_name.startswith('imp_') or var_name.startswith('thunk_'):
             return False
-
+    
         if var_name.startswith('fde_') or var_name.startswith('cie_'):
             return False
-
+    
         if var_name.startswith('completed.0') \
             or var_name.startswith('data_start'):
             return False
-
+    
         if var_addr.toString().startswith('EXTERNAL:'):
             return False
         section_name = program.getMemory().getBlock(var_addr).getName()
         #if section_name not in ['.data', '.bss']:
         #    return False
-
+    
         return True
     '''
 

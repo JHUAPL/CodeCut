@@ -1,3 +1,4 @@
+# @category CodeCut
 from ghidra.program.model.listing import Function
 from ghidra.program.model.symbol import SourceType
 
@@ -39,6 +40,7 @@ def get_referenced_function_signatures_base(function, monitor):
     return signatures
 
 
+
 def getFunctionReferences(function, monitor):
     refs = set()
     instructions = \
@@ -47,9 +49,10 @@ def getFunctionReferences(function, monitor):
     for instr in instructions:
         flowType = instr.getFlowType()
         if flowType.isCall():
-            target = instr.getOperandReferences(0)[0].getToAddress()
-            func = \
-                function.getProgram().getFunctionManager().getFunctionAt(target)
+            oprefs = instr.getOperandReferences(0)
+            if not oprefs: continue
+            target = oprefs[0].getToAddress()
+            func = function.getProgram().getFunctionManager().getFunctionAt(target)
             if func is not None:
                 refs.add(func)
     return refs

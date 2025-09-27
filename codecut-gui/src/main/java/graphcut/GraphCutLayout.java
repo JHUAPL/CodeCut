@@ -65,7 +65,6 @@ public class GraphCutLayout extends AbstractVisualGraphLayout<GraphCutVertex, Gr
 		return newLayout;
 	}
 	
-	@Override
 	protected Point2D getVertexLocation(GraphCutVertex v, Column col, Row<GraphCutVertex> row, Rectangle bounds) {
 		return getCenteredVertexLocation(v, col, row, bounds);
 	}
