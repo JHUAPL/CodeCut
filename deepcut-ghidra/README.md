@@ -55,8 +55,4 @@ If there are any errors please make sure you are using the proper path
 to Python 3 and the requirement dependencies installed.
 
 ## Troubleshooting
-You can verify that dependencies are correct by navigating to:
-`~/.ghidra/.ghidra_${VERSION}/Extensions/deepcut-ghidra/data`
-and running `./python3 deepcut.py`.  Python will throw errors if it
-can't find dependencies.  If the process runs and sits there waiting
-for input, then the dependencies should be correct.
+The main analysis is performed by the script `deepcut.py` in the directory `~/.ghidra/.ghidra_${VERSION}/Extensions/deepcut-ghidra/ghidra_scripts/`, which can be run outside the context of Ghidra.  Python will throw errors if it can't find dependencies.  If the process runs and sits there waiting for input, then the dependencies should be correct.
