@@ -35,9 +35,6 @@
 import sys
 import json
 
-print("started DeepCutRun")
-
-
 from dependency_bootstrap import DependencyManager
 
 # list the packages you need
