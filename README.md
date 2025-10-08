@@ -13,33 +13,26 @@ Follow normal Ghidra extension installation procedures.  Copy the CodeCut and De
 **NOTE:** After restarting and loading a CodeBrowser window, Ghidra will tell you it has found new plugins and ask if you want to configure them.  Only CodeCut shows up in this window.  This is because DeepCut is a "one-shot" analyzer (it is still installed).
 
 ## Configuring Native Python Paths & Python Dependencies
-Both CodeCut and DeepCut rely on native Python (outside of Ghidra) on your system.  CodeCut uses native Python for guessing module names.  DeepCut's model evaluation runs in native Python.  
+Both CodeCut and DeepCut rely on the native PyGhidra extension, and are not compatible with Jython. CodeCut uses native Python for guessing module names.  DeepCut's model inference runs in native Python.  
 
 ### Native Python Dependencies
+
 CodeCut: 
 - nltk
 
 DeepCut: 
 - torch
 - torch-geometric
+- networkx
+- scipy
 
-To install dependencies run:
-
+To install dependencies, run:
+```bash
+pip install nltk
+pip install torch torch-geometric networkx scipy
 ```
-pip3 install nltk
-pip3 install torch torch-geometric
-```
+using the Python installation linked to your PyGhidra.
 
-(assuming that pip3 points to the version of Python you plan to use below)
-
-### Configuring CodeCut Python Path
-![](img/codecut-config.png)
-Configure the native Python path for CodeCut by choosing **Edit -> Tool Options** and selecting "Python Executable."
-
-### Configuring DeepCut Python Path
-![](img/deepcut-config.png)
-
-Configure the native Python path for DeepCut by choosing **Analysis -> Analyze All Open...** and selecting **Deepcut (Prototype)**.  After changing the path, click the **Apply** button.
 
 ## Running DeepCut Analysis
 DeepCut is best run as a one-shot analyzer *after* initial auto-analysis.  Select **Analysis -> One Shot -> Deepcut**.  After DeepCut runs, you can view the results by looking at the **Namespace** field in the **Symbol Table** view.

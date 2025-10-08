@@ -3,7 +3,7 @@
 
 ## Building and Installation
 
-Requirements are the same as the Ghidra build requirements, currently JDK 17 (or newer) is required for Ghidra 10.2.
+Requirements are the same as the Ghidra build requirements, currently JDK 21 (or newer) is required for Ghidra 11.
 
 Ghidra's standard Gradle build system is used. Set the `GHIDRA_INSTALL_DIR` environment variable before building, or set it as a Gradle property (useful for building in an IDE).
 
@@ -20,13 +20,12 @@ gradle
 echo GHIDRA_INSTALL_DIR="/path/to/ghidra" > gradle.properties 
 ```
 
-### Python 3 
+### PyGhidra and Dependencies
 
-The CodeCut GUI's Module Name Guessing tool requires Python 3. Before running the tool, you may need to modify the Python Path of the tool. To do this, **Edit -> Tool Options -> Python Executable**. Insert path to your Python 3 executable. Click apply and ok.
+CodeCut GUI requires the PyGhidra extension, and is not compatible with Jython.
 
-### Install nltk
-This module depends on the Python 3 dependency `nltk`. Run the following command to install:
-```
+The CodeCut GUI's Module Name Guessing tool requires the Python dependency [Natural Language ToolKit](https://www.nltk.org/). CodeCut attempts to automatically install the dependency when the tool is launched, but it can also be installed using the Python associated with PyGhidra by running:
+```bash
 pip install nltk
 ```
 
