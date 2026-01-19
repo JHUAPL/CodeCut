@@ -51,7 +51,7 @@
 <tocroot>
 	<!-- Uncomment and adjust fields to add help topic to help system's Table of Contents
 	<tocref id="Ghidra Functionality">
-		<tocdef id="HelpAnchor" text="My Feature" target="help/topics/my_topic/help.html" />
+		<tocdef id="CodeCut" text="CodeCut Plugin" target="help/topics/codecut/help.html" />
 	</tocref>
 	-->
 </tocroot>

@@ -152,10 +152,11 @@ class SymbolPlaceholder implements Symbol{
 		throw new UnsupportedOperationException();
 	}
 
-	@Override
-	public boolean hasMultipleReferences() {
-		throw new UnsupportedOperationException();
-	}
+	//removed in Ghidra 12.0 - doubt we need this in 11.4?
+	//@Override
+	//public boolean hasMultipleReferences() {
+	//	throw new UnsupportedOperationException();
+	//}
 
 	@Override
 	public boolean hasReferences() {

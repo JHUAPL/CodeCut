@@ -88,7 +88,6 @@ import ghidra.program.model.listing.*;
 import ghidra.program.model.symbol.*;
 import ghidra.program.util.ChangeManager;
 import ghidra.program.util.DefinedDataIterator;
-import ghidra.program.util.DefinedStringIterator;
 import ghidra.program.util.GhidraProgramUtilities;
 import ghidra.program.util.ProgramChangeRecord;
 import ghidra.program.util.ProgramLocation;
